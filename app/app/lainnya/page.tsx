@@ -8,7 +8,7 @@ const menu = [
   { href: "/app/promo", nama: "Promo dan referral", ket: "Kode diskon murid", icon: "tag", siap: true },
   { href: "/app/rekap", nama: "Rekap pemasukan", ket: "Per bulan, paket, dan bagi hasil", icon: "chart", siap: true },
   { href: "/app/pengajar", nama: "Pengajar", ket: "Undang dan atur bagi hasil", icon: "users", siap: true },
-  { href: "#", nama: "Langganan", ket: "Paket KelolaKelas kamu", icon: "bill", siap: false },
+  { href: "/app/langganan", nama: "Langganan", ket: "Paket KelolaKelas kamu", icon: "bill", siap: true },
 ];
 
 export default function Lainnya() {
