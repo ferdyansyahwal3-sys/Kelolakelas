@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { toCsv } from "@/lib/csv";
-import { isiTemplate, KATEGORI, slugDariNama, validasiPengaturan, VARIABEL, type Galat, type Pengaturan } from "@/lib/pengaturan";
+import { aturanUntuk, isiTemplate, istilahUntuk, KATEGORI, slugDariNama, syaratUntuk, validasiPengaturan, VARIABEL, type Galat, type Pengaturan } from "@/lib/pengaturan";
 import { labelMetode } from "@/lib/tagihan";
 import type { MuridContoh } from "@/lib/contoh";
 import type { TagihanOwner } from "@/lib/tagihan";
@@ -20,9 +20,9 @@ export function PengaturanForm({ awal, murid, tagihan }: Props) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KUNCI);
-      if (raw) { const d = JSON.parse(raw) as Pengaturan; setP(d); setTersimpan(d); }
+      if (raw) { const d = JSON.parse(raw) as Pengaturan; const gab = { ...awal, ...d, aturan: { ...awal.aturan, ...d.aturan } }; setP(gab); setTersimpan(gab); }
     } catch {}
-  }, []);
+  }, [awal]);
 
   const berubah = JSON.stringify(p) !== JSON.stringify(tersimpan);
   const link = `kelolakelas.id/u/${p.profil.slug || "…"}`;
@@ -107,6 +107,7 @@ export function PengaturanForm({ awal, murid, tagihan }: Props) {
         <h2 className="h2">Istilah</h2>
         <div className="surface kartu-form">
           <p className="meta" style={{ margin: 0 }}>Sesuaikan kata yang dipakai di aplikasi, misalnya siswa, pertemuan, atau tutor.</p>
+          <button type="button" className="btn btn-2 btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => { setP((d) => ({ ...d, istilah: istilahUntuk(d.profil.kategori) })); setGalat((g) => { const n = { ...g }; delete n["istilah.murid"]; delete n["istilah.sesi"]; delete n["istilah.pengajar"]; return n; }); }}>Pakai sebutan untuk {p.profil.kategori}</button>
           {(["murid", "sesi", "pengajar"] as const).map((k) => (
             <label key={k} className="field"><span className="label l2">Sebutan untuk “{k}”</span>
               <input value={p.istilah[k]} onChange={(e) => ubah("istilah", { [k]: e.target.value }, `istilah.${k}`)} /><E k={`istilah.${k}`} /></label>
@@ -115,7 +116,7 @@ export function PengaturanForm({ awal, murid, tagihan }: Props) {
       </section>
 
       <section className="grp">
-        <h2 className="h2">Aturan sesi</h2>
+        <h2 className="h2">Aturan sesi dan syarat</h2>
         <div className="surface kartu-form">
           <div style={{ display: "flex", gap: 12 }}>
             <label className="field" style={{ flex: 1 }}><span className="label l2">Batas izin (jam)</span>
@@ -123,7 +124,14 @@ export function PengaturanForm({ awal, murid, tagihan }: Props) {
             <label className="field" style={{ flex: 1 }}><span className="label l2">Masa berlaku (hari)</span>
               <input inputMode="numeric" value={p.aturan.masaBerlakuHari} onChange={(e) => ubah("aturan", { masaBerlakuHari: Number(e.target.value.replace(/\D/g, "")) }, "aturan.masaBerlakuHari")} /><E k="aturan.masaBerlakuHari" /></label>
           </div>
-          <label className="field"><span className="label l2">Aturan di form pendaftaran (satu per baris)</span>
+          <label className="field"><span className="label l2">Toleransi terlambat (menit)</span>
+            <input inputMode="numeric" value={p.aturan.toleransiTelatMenit} onChange={(e) => ubah("aturan", { toleransiTelatMenit: Number(e.target.value.replace(/\D/g, "")) }, "aturan.toleransiTelatMenit")} /><E k="aturan.toleransiTelatMenit" /></label>
+          <label className="cek"><input type="checkbox" checked={p.aturan.sesiPengganti} onChange={(e) => ubah("aturan", { sesiPengganti: e.target.checked }, "aturan.sesiPengganti")} /><span>{p.istilah.sesi[0]!.toUpperCase() + p.istilah.sesi.slice(1)} yang izin tepat waktu bisa diganti</span></label>
+          <div className="aksi">
+            <button type="button" className="btn btn-2 btn-sm" onClick={() => { const a = aturanUntuk(p.profil.kategori); setP((d) => ({ ...d, aturan: { ...a, daftar: syaratUntuk(d.profil.kategori, a, d.istilah.sesi) } })); setGalat({}); }}>Pakai aturan untuk {p.profil.kategori}</button>
+            <button type="button" className="btn btn-2 btn-sm" onClick={() => { setP((d) => ({ ...d, aturan: { ...d.aturan, daftar: syaratUntuk(d.profil.kategori, d.aturan, d.istilah.sesi) } })); bersih("aturan.daftar"); }}>Susun syarat dari angka di atas</button>
+          </div>
+          <label className="field"><span className="label l2">Syarat dan ketentuan di form pendaftaran (satu per baris)</span>
             <textarea rows={4} value={p.aturan.daftar.join("\n")} onChange={(e) => ubah("aturan", { daftar: e.target.value.split("\n").filter((x) => x.trim() !== "") }, "aturan.daftar")} /><E k="aturan.daftar" /></label>
         </div>
       </section>

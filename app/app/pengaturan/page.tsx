@@ -1,13 +1,13 @@
 import { PageHeader } from "@/components/PageHeader";
 import { PengaturanForm } from "@/components/PengaturanForm";
-import { aturanContoh, muridContoh, tagihanContoh, tenantContoh } from "@/lib/contoh";
-import type { Pengaturan } from "@/lib/pengaturan";
+import { muridContoh, tagihanContoh, tenantContoh } from "@/lib/contoh";
+import { aturanUntuk, syaratUntuk, type Pengaturan } from "@/lib/pengaturan";
 
 const awal: Pengaturan = {
   profil: { nama: tenantContoh.nama, kategori: "Renang", kota: tenantContoh.kota, deskripsi: "Les renang privat untuk anak dan dewasa. Coach berpengalaman, kolam bersih, jadwal fleksibel.", slug: tenantContoh.slug },
   tema: "gelap",
   istilah: { murid: tenantContoh.istilah.murid, sesi: tenantContoh.istilah.sesi, pengajar: tenantContoh.istilah.pengajar },
-  aturan: { batasIzinJam: 2, masaBerlakuHari: 35, daftar: aturanContoh },
+  aturan: { ...aturanUntuk("Renang"), daftar: syaratUntuk("Renang", aturanUntuk("Renang"), "sesi") },
   rekening: { bank: "", nomor: "", atasNama: "" },
   templat: {
     acc: "Halo {nama}, pendaftaran kamu di {usaha} untuk {slot} sudah disetujui. Total {total}, mohon dibayar sebelum sesi pertama. Terima kasih!",

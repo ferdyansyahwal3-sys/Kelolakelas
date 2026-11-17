@@ -216,3 +216,10 @@ export const pengajarOwnerContoh: PengajarOwner[] = [
   { id: "ilham", nama: "Coach Ilham", email: "ilham@contoh.id", pemilik: true, status: "aktif" },
   { id: "riska", nama: "Coach Riska", email: "riska@contoh.id", pemilik: false, status: "aktif" },
 ];
+
+import type { PaketOwner } from "./paket";
+
+export const paketOwnerContoh: PaketOwner[] = paketContoh.map((p) => ({
+  id: p.id, nama: p.nama, kategori: p.kategori as "anak" | "dewasa", jenis: p.jenis as "privat" | "grup" | "keluarga",
+  jumlahSesi: p.jumlahSesi, masaBerlakuHari: p.masaHari, harga: p.harga, anggota: p.jenis === "keluarga" ? 2 : null, aktif: true,
+}));

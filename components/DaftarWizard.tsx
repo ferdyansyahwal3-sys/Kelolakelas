@@ -1,14 +1,15 @@
 "use client";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { kirimPendaftaran } from "@/app/u/[slug]/daftar/actions";
 import { Icon } from "./Icon";
 import { ThemeToggle } from "./ThemeToggle";
 import { cariPromo, hitungTotal } from "@/lib/harga";
 import { pecahRupiah } from "@/lib/format";
+import { kategoriTersedia } from "@/lib/paket";
 import { type Galat } from "@/lib/pendaftaran";
 
-interface Paket { id: string; nama: string; kategori: string; harga: number; catatan: string }
+interface Paket { id: string; nama: string; kategori: string; harga: number; catatan: string; aktif?: boolean }
 interface Promo { kode: string; jenis: "persen" | "nominal"; nilai: number }
 interface Props {
   slug: string;
@@ -22,8 +23,18 @@ const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`
 
 export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
   const [langkah, setLangkah] = useState<2 | 3>(2);
-  const [kategori, setKategori] = useState<"anak" | "dewasa">("anak");
-  const [paketId, setPaketId] = useState("k8");
+  const [syarat, setSyarat] = useState(aturan);
+  useEffect(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem("kk-pengaturan") ?? "null") as { aturan?: { daftar?: unknown } } | null;
+      const a = d?.aturan?.daftar;
+      if (Array.isArray(a) && a.length > 0 && a.length <= 8 && a.every((x) => typeof x === "string" && x.length <= 120)) setSyarat(a as string[]);
+    } catch {}
+  }, []);
+  const tersedia = kategoriTersedia(paket);
+  const aktifSemua = paket.filter((p) => p.aktif !== false);
+  const [kategori, setKategori] = useState<"anak" | "dewasa">(tersedia[0] ?? "anak");
+  const [paketId, setPaketId] = useState(() => aktifSemua.find((p) => p.kategori === (tersedia[0] ?? "anak"))?.id ?? "");
   const [nama, setNama] = useState("");
   const [usia, setUsia] = useState("");
   const [namaOrtu, setNamaOrtu] = useState("");
@@ -37,15 +48,15 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
   const [hasil, setHasil] = useState<{ kode: string; total: number } | null>(null);
   const [sibuk, mulai] = useTransition();
 
-  const daftarPaket = paket.filter((p) => p.kategori === kategori);
-  const terpilih = paket.find((p) => p.id === paketId) ?? daftarPaket[0]!;
-  const rincian = hitungTotal(terpilih.harga, promoAktif);
+  const daftarPaket = aktifSemua.filter((p) => p.kategori === kategori);
+  const terpilih = daftarPaket.find((p) => p.id === paketId) ?? daftarPaket[0];
+  const rincian = hitungTotal(terpilih?.harga ?? 0, promoAktif);
 
   const bersihkan = (k: keyof Galat) => setGalat((g) => ({ ...g, [k]: undefined }));
 
   function ganti(k: "anak" | "dewasa") {
     setKategori(k);
-    setPaketId(paket.find((p) => p.kategori === k)!.id);
+    setPaketId(aktifSemua.find((p) => p.kategori === k)?.id ?? "");
     setGalat({});
   }
 
@@ -59,7 +70,7 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
     setPesan("");
     mulai(async () => {
       const r = await kirimPendaftaran({
-        slotId: slot.id, paketId: terpilih.id, kategori, nama,
+        slotId: slot.id, paketId: terpilih?.id ?? "", kategori, nama,
         usia: usia ? Number(usia) : undefined, namaOrtu, noWa,
         kodePromo: promoAktif?.kode, setuju,
       });
@@ -83,6 +94,7 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
             <div className="item"><span className="sub grow">Total</span><b>{rp(hasil.total)}</b></div>
           </div>
           <p className="meta" style={{ margin: 0 }}>Simpan kode ini untuk cek status. Bayar setelah pendaftaran disetujui.</p>
+          <Link href={`/u/${slug}/status`} className="btn">Cek status pendaftaran</Link>
           <Link href={`/u/${slug}/slot`} className="btn btn-2">Kembali ke slot</Link>
         </main>
       </div>
@@ -112,13 +124,15 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
         {langkah === 2 ? (
           <>
             <h1 className="title">Pilih paket</h1>
-            <div className="seg">
-              <button type="button" className={kategori === "anak" ? "on" : ""} onClick={() => ganti("anak")}>Anak</button>
-              <button type="button" className={kategori === "dewasa" ? "on" : ""} onClick={() => ganti("dewasa")}>Dewasa</button>
-            </div>
+            {tersedia.length > 1 && (
+              <div className="seg">
+                <button type="button" className={kategori === "anak" ? "on" : ""} onClick={() => ganti("anak")}>Anak</button>
+                <button type="button" className={kategori === "dewasa" ? "on" : ""} onClick={() => ganti("dewasa")}>Dewasa</button>
+              </div>
+            )}
             <div className="grp" role="radiogroup" aria-label="Paket">
               {daftarPaket.map((p) => (
-                <button key={p.id} type="button" role="radio" aria-checked={p.id === terpilih.id} className={p.id === terpilih.id ? "opt on" : "opt"} onClick={() => setPaketId(p.id)}>
+                <button key={p.id} type="button" role="radio" aria-checked={p.id === terpilih?.id} className={p.id === terpilih?.id ? "opt on" : "opt"} onClick={() => setPaketId(p.id)}>
                   <span className="radio" />
                   <span className="grow" style={{ textAlign: "left" }}><span className="name" style={{ display: "block" }}>{p.nama}</span><span className="meta">{p.catatan}</span></span>
                   <b>{rp(p.harga)}</b>
@@ -158,17 +172,17 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
             </div>
 
             <div className="surface" style={{ padding: 16 }}>
-              <div className="sum"><span className="sub">{terpilih.nama}</span><span>{rp(rincian.harga)}</span></div>
+              <div className="sum"><span className="sub">{terpilih?.nama}</span><span>{rp(rincian.harga)}</span></div>
               {rincian.potongan > 0 && <div className="sum"><span className="sub">Promo {promoAktif?.kode}</span><span style={{ color: "var(--accent-text)" }}>−{rp(rincian.potongan)}</span></div>}
               <div className="sum total"><b>Total</b><b>{rp(rincian.total)}</b></div>
             </div>
 
             <div className="grp">
-              <span className="label" style={{ color: "var(--text-2)" }}>Aturan sesi</span>
-              <ul className="aturan">{aturan.map((a) => <li key={a}>{a}</li>)}</ul>
+              <span className="label" style={{ color: "var(--text-2)" }}>Syarat dan ketentuan</span>
+              <ul className="aturan">{syarat.map((a) => <li key={a}>{a}</li>)}</ul>
               <label className="cek">
                 <input type="checkbox" checked={setuju} onChange={(e) => { setSetuju(e.target.checked); bersihkan("setuju"); }} />
-                <span>Saya sudah baca dan setuju dengan aturan di atas.</span>
+                <span>Saya sudah baca dan setuju dengan syarat dan ketentuan di atas.</span>
               </label>
               {galat.setuju && <p className="galat">{galat.setuju}</p>}
             </div>

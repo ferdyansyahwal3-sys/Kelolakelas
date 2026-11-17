@@ -64,6 +64,7 @@ export default function SlotTersedia({ params, searchParams }: { params: { slug:
           })}
         </div>
         <p className="meta" style={{ margin: 0, textAlign: "center" }}>Slot penuh belum bisa dipilih. Daftar tunggu menyusul.</p>
+        <Link href={`/u/${params.slug}/status`} className="link" style={{ alignSelf: "center" }}>Sudah mendaftar? Cek status</Link>
       </main>
       <div className="foot">
         {terpilih ? (
