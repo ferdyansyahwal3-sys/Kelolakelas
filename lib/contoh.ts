@@ -223,3 +223,16 @@ export const paketOwnerContoh: PaketOwner[] = paketContoh.map((p) => ({
   id: p.id, nama: p.nama, kategori: p.kategori as "anak" | "dewasa", jenis: p.jenis as "privat" | "grup" | "keluarga",
   jumlahSesi: p.jumlahSesi, masaBerlakuHari: p.masaHari, harga: p.harga, anggota: p.jenis === "keluarga" ? 2 : null, aktif: true,
 }));
+
+// Token contoh (di aplikasi nyata disimpan sebagai hash di database dan dibuat saat pendaftaran di-ACC).
+export const tokenPortalContoh: Record<string, string> = {
+  m1: "R7KQ4WM9XD2NBHT6FCYPZ3EAVG",
+  m3: "M3TXA8QZ5HNEC2DKW7LRJ9VYBF",
+};
+
+export const SEKARANG_CONTOH = "2026-11-07T09:00:00+07:00";
+
+export const sesiBerikutnyaContoh: Record<string, { label: string; mulai: string; nama: string }> = {
+  m1: { label: "Sab 14 Nov · 07.00", mulai: "2026-11-14T07:00:00+07:00", nama: "Privat anak · Coach Ilham" },
+  m3: { label: "Hari ini · 11.00", mulai: "2026-11-07T11:00:00+07:00", nama: "Semi privat · Coach Riska" },
+};

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { MuridDetail } from "@/components/MuridDetail";
-import { muridContoh, paketContoh, tenantContoh } from "@/lib/contoh";
+import { muridContoh, paketContoh, tenantContoh, tokenPortalContoh } from "@/lib/contoh";
 
 export default function DetailMurid({ params }: { params: { id: string } }) {
   const murid = muridContoh.find((m) => m.id === params.id);
@@ -11,7 +11,7 @@ export default function DetailMurid({ params }: { params: { id: string } }) {
   return (
     <main className="scroll" style={{ paddingTop: 20 }}>
       <PageHeader title="Detail murid" back="/app/murid" />
-      <MuridDetail murid={murid} paket={paket} usaha={tenantContoh.nama} />
+      <MuridDetail murid={murid} paket={paket} usaha={tenantContoh.nama} slug={tenantContoh.slug} tokenAwal={tokenPortalContoh[murid.id] ?? null} />
     </main>
   );
 }

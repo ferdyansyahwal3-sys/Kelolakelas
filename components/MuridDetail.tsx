@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "./Icon";
 import { linkWa } from "@/lib/acc";
+import { buatTokenPortal, linkPortal } from "@/lib/portal";
 import { inisial, pecahRupiah, tglPendek } from "@/lib/format";
 import { labelBayar } from "@/lib/murid";
 import type { MuridContoh, StatusBayar } from "@/lib/contoh";
@@ -12,7 +13,11 @@ const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`
 const kelasSesi = { hadir: "st st-ok", izin: "st st-few", alpa: "st st-full" } as const;
 const namaSesi = { hadir: "Hadir", izin: "Izin", alpa: "Alpa" } as const;
 
-export function MuridDetail({ murid, paket, usaha }: { murid: MuridContoh; paket: Paket; usaha: string }) {
+export function MuridDetail({ murid, paket, usaha, slug, tokenAwal }: { murid: MuridContoh; paket: Paket; usaha: string; slug: string; tokenAwal: string | null }) {
+  const [token, setToken] = useState<string | null>(tokenAwal);
+  const [baru, setBaru] = useState(false);
+  const [ulang, setUlang] = useState(false);
+  const url = token && typeof window !== "undefined" ? linkPortal(window.location.origin, slug, token) : "";
   const [aktif, setAktif] = useState(murid.aktif);
   const [tagihan, setTagihan] = useState(murid.tagihan);
   const [konfirmasi, setKonfirmasi] = useState(false);
@@ -26,6 +31,15 @@ export function MuridDetail({ murid, paket, usaha }: { murid: MuridContoh; paket
   function info(teks: string) {
     setToast(teks);
     setTimeout(() => setToast(""), 3500);
+  }
+
+  async function salinLink() {
+    try { await navigator.clipboard.writeText(url); info("Link portal disalin."); } catch { info("Gagal menyalin, salin manual dari kotak."); }
+  }
+
+  function buatLink() {
+    setToken(buatTokenPortal()); setBaru(true); setUlang(false);
+    info("Link baru dibuat. Link lama tidak berlaku lagi.");
   }
 
   function perpanjang() {
@@ -61,6 +75,30 @@ export function MuridDetail({ murid, paket, usaha }: { murid: MuridContoh; paket
           <div className="bar" aria-hidden="true"><i style={{ width: `${persen}%` }} /></div>
         </div>
         {aktif && <button type="button" className="btn" onClick={perpanjang}>Perpanjang paket</button>}
+      </section>
+
+      <section className="grp">
+        <h2 className="h2">Link portal murid</h2>
+        <div className="surface kartu-form">
+          {token ? (
+            <>
+              <input readOnly value={url} aria-label="Link portal murid" onFocus={(e) => e.currentTarget.select()} style={{ height: 46, padding: "0 14px", borderRadius: 14, border: "1px solid var(--surface-border)", background: "var(--pill)", color: "var(--text)", font: "inherit", fontSize: 12, width: "100%" }} />
+              <div className="aksi">
+                <button type="button" className="btn btn-sm" onClick={salinLink}>Salin</button>
+                <a className="btn btn-2 btn-sm" target="_blank" rel="noopener noreferrer" href={linkWa(murid.noWa, `Halo ${murid.namaOrtu ?? murid.nama}, ini link pribadi untuk melihat sisa sesi, jadwal, dan pembayaran ${murid.nama} di ${usaha}: ${url}`)}>Kirim lewat WA</a>
+                {ulang ? (
+                  <><button type="button" className="btn btn-2 btn-sm" onClick={buatLink}>Ya, buat baru</button><button type="button" className="btn btn-2 btn-sm" onClick={() => setUlang(false)}>Batal</button></>
+                ) : <button type="button" className="btn btn-2 btn-sm" onClick={() => setUlang(true)}>Buat ulang</button>}
+              </div>
+              <p className="meta" style={{ margin: 0 }}>{baru ? "Link baru ini belum aktif di halaman murid sampai database tersambung." : "Siapa pun yang memegang link ini bisa melihat data murid ini. Buat ulang bila link bocor atau murid ganti HP."}</p>
+            </>
+          ) : (
+            <>
+              <p className="sub" style={{ margin: 0, fontSize: 13 }}>Murid belum punya link. Link dibuat otomatis saat pendaftaran di-ACC.</p>
+              <button type="button" className="btn btn-sm" style={{ alignSelf: "flex-start" }} onClick={buatLink}>Buat link portal</button>
+            </>
+          )}
+        </div>
       </section>
 
       <section className="grp">
