@@ -165,3 +165,27 @@ export const tagihanContoh: TagihanOwner[] = [
   { id: "th7", nama: "Bimo Tri Wibowo", namaOrtu: "Tri Wibowo", noWa: "081211110002", paket: "8x per bulan", nominal: 720000, tempo: "2026-10-20", status: "lunas", dibayar: { tanggal: "2026-10-19", metode: "tunai" } },
   { id: "th8", nama: "Raka Putra", namaOrtu: "Yudi Putra", noWa: "081211110005", paket: "8x per bulan", nominal: 670000, tempo: "2026-11-05", status: "lunas", dibayar: { tanggal: "2026-11-05", metode: "qris" } },
 ];
+
+import type { Pembayaran } from "./rekap";
+
+export const bagiHasilContoh: Record<string, number> = { ilham: 0, riska: 40 };
+export const bagiNominalContoh: Record<string, number> = { ilham: 0, riska: 750000 };
+
+const NAMA_PAKET: Record<number, string> = { 400000: "4x per bulan", 600000: "Dewasa 4x per bulan", 670000: "8x per bulan (promo)", 720000: "8x per bulan" };
+
+function bulanan(bulan: string, isi: [number, string, string][]): Pembayaran[] {
+  return isi.map(([nominal, pengajarId, nama], i) => ({
+    id: `${bulan}-${i + 1}`,
+    tgl: `${bulan}-${String(1 + (bulan === "2026-11" ? i : (i * 4) % 27)).padStart(2, "0")}`,
+    nama, paket: NAMA_PAKET[nominal]!, nominal, pengajarId,
+  }));
+}
+
+export const pembayaranContoh: Pembayaran[] = [
+  ...bulanan("2026-06", [[720000, "ilham", "Aisyah Rahma"], [720000, "ilham", "Bimo Tri"], [400000, "riska", "Nadia Salsabila"], [600000, "ilham", "Mita Lestari"], [400000, "riska", "Tara Wijaya"]]),
+  ...bulanan("2026-07", [[720000, "ilham", "Aisyah Rahma"], [720000, "ilham", "Bimo Tri"], [720000, "riska", "Zahra Putri"], [400000, "riska", "Nadia Salsabila"], [600000, "ilham", "Mita Lestari"]]),
+  ...bulanan("2026-08", [[720000, "ilham", "Aisyah Rahma"], [720000, "ilham", "Bimo Tri"], [720000, "riska", "Zahra Putri"], [670000, "riska", "Raka Putra"], [400000, "riska", "Nadia Salsabila"], [400000, "ilham", "Tara Wijaya"]]),
+  ...bulanan("2026-09", [[720000, "ilham", "Aisyah Rahma"], [720000, "ilham", "Bimo Tri"], [720000, "riska", "Zahra Putri"], [720000, "ilham", "Naufal Akbar"], [670000, "riska", "Raka Putra"], [400000, "riska", "Nadia Salsabila"]]),
+  ...bulanan("2026-10", [[720000, "ilham", "Aisyah Rahma"], [720000, "ilham", "Bimo Tri"], [720000, "riska", "Zahra Putri"], [670000, "riska", "Raka Putra"], [670000, "ilham", "Dika Pratama"], [600000, "ilham", "Mita Lestari"]]),
+  ...bulanan("2026-11", [[720000, "ilham", "Aisyah Rahma"], [720000, "ilham", "Bimo Tri"], [720000, "riska", "Zahra Putri"], [720000, "ilham", "Naufal Akbar"], [670000, "riska", "Raka Putra"], [400000, "riska", "Tara Wijaya"], [400000, "ilham", "Nadia Salsabila"]]),
+];

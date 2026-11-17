@@ -6,7 +6,7 @@ const menu = [
   { href: "/app/pengaturan", nama: "Pengaturan", ket: "Profil, tema, rekening, aturan sesi", icon: "grid", siap: true },
   { href: "/app/jadwal", nama: "Jadwal dan kuota", ket: "Slot per pengajar", icon: "cal", siap: true },
   { href: "#", nama: "Promo dan referral", ket: "Kode diskon murid", icon: "tag", siap: false },
-  { href: "#", nama: "Rekap pemasukan", ket: "Per bulan dan pengajar", icon: "chart", siap: false },
+  { href: "/app/rekap", nama: "Rekap pemasukan", ket: "Per bulan, paket, dan bagi hasil", icon: "chart", siap: true },
   { href: "#", nama: "Pengajar", ket: "Undang dan atur bagi hasil", icon: "users", siap: false },
   { href: "#", nama: "Langganan", ket: "Paket KelolaKelas kamu", icon: "bill", siap: false },
 ];

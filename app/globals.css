@@ -174,6 +174,22 @@ a { color: inherit; text-decoration: none; }
   .kpi { padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
   .big-kpi { font-family: var(--font-head); font-stretch: var(--head-stretch); font-weight: 600; font-size: 20px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
   .bukti { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; border: 1px dashed var(--ghost-border, var(--line)); background: var(--pill); }
+  .bulan { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .bulan b { font-family: var(--font-head); font-stretch: var(--head-stretch); font-size: 16px; }
+  .bulan .circ:disabled { opacity: 0.35; cursor: default; }
+  .bar-on { fill: var(--accent); filter: drop-shadow(0 0 8px rgba(47, 107, 255, 0.55)); }
+  .bar-off { fill: var(--tint); }
+  .bar-nilai { fill: var(--text); font-size: 10px; font-weight: 600; transition: opacity 0.15s; }
+  .bar-label { fill: var(--text-3); font-size: 10px; }
+  .persen { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; height: 40px; border-radius: 12px; border: 1px solid var(--surface-border); background: var(--pill); color: var(--text-2); }
+  .persen.lebar input { width: 92px; }
+  .pilih { height: 34px; padding: 0 28px 0 12px; border-radius: 999px; border: 1px solid var(--pill-border); background: var(--pill); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%238d9ac2' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m1 1 4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; }
+  .pilih:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .persen input { width: 36px; border: 0; background: transparent; color: var(--text); font: inherit; font-weight: 600; text-align: right; outline: none; }
+  .persen:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .mini-dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 13px; }
+  .mini-dl dt { color: var(--text-3); }
+  .mini-dl dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
   .bar { height: 4px; border-radius: 99px; background: var(--pill); overflow: hidden; }
   .bar i { display: block; height: 100%; border-radius: 99px; background: var(--bar); transition: width 0.4s ease-out; }
   .opt { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 18px; background: var(--surface); border: 1px solid var(--surface-border); box-shadow: var(--surface-shadow); color: var(--text); font: inherit; width: 100%; cursor: pointer; }
