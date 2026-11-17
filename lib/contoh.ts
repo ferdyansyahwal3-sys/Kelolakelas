@@ -189,3 +189,21 @@ export const pembayaranContoh: Pembayaran[] = [
   ...bulanan("2026-10", [[720000, "ilham", "Aisyah Rahma"], [720000, "ilham", "Bimo Tri"], [720000, "riska", "Zahra Putri"], [670000, "riska", "Raka Putra"], [670000, "ilham", "Dika Pratama"], [600000, "ilham", "Mita Lestari"]]),
   ...bulanan("2026-11", [[720000, "ilham", "Aisyah Rahma"], [720000, "ilham", "Bimo Tri"], [720000, "riska", "Zahra Putri"], [720000, "ilham", "Naufal Akbar"], [670000, "riska", "Raka Putra"], [400000, "riska", "Tara Wijaya"], [400000, "ilham", "Nadia Salsabila"]]),
 ];
+
+import type { PromoOwner } from "./promo";
+
+export const promoOwnerContoh: PromoOwner[] = [
+  { id: "pr1", kode: "HEMAT10", jenis: "persen", nilai: 10, kuota: 20, terpakai: 7, kedaluwarsa: "2026-12-31", aktif: true },
+  { id: "pr2", kode: "AWALNOV", jenis: "nominal", nilai: 75000, kuota: 10, terpakai: 10, kedaluwarsa: null, aktif: true },
+  { id: "pr3", kode: "OKTOBER", jenis: "persen", nilai: 15, kuota: null, terpakai: 4, kedaluwarsa: "2026-10-31", aktif: true },
+  { id: "pr4", kode: "TEMAN5", jenis: "persen", nilai: 5, kuota: null, terpakai: 2, kedaluwarsa: null, aktif: false },
+  { id: "rf1", kode: "RAKA10", jenis: "nominal", nilai: 50000, kuota: null, terpakai: 3, kedaluwarsa: null, aktif: true, pemilik: "Raka Putra" },
+  { id: "rf2", kode: "AISYAH11", jenis: "nominal", nilai: 50000, kuota: null, terpakai: 1, kedaluwarsa: null, aktif: true, pemilik: "Aisyah Rahma" },
+];
+
+export const pemakaianPromoContoh: { id: string; kode: string; nama: string; tgl: string; potongan: number }[] = [
+  { id: "u1", kode: "HEMAT10", nama: "Zahra Putri", tgl: "2026-11-06", potongan: 72000 },
+  { id: "u2", kode: "HEMAT10", nama: "Naufal Akbar", tgl: "2026-11-04", potongan: 72000 },
+  { id: "u3", kode: "RAKA10", nama: "Tara Wijaya", tgl: "2026-11-03", potongan: 50000 },
+  { id: "u4", kode: "AWALNOV", nama: "Mita Lestari", tgl: "2026-11-02", potongan: 75000 },
+];
