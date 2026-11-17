@@ -72,12 +72,13 @@ export interface PendaftaranContoh {
   slotLabel: string;
   kodePromo?: string;
   status: StatusPendaftaran;
+  bayar?: { bank: string; nominal: number; diunggah: string; berkas: string };
 }
 
 export const pendaftaranContoh: PendaftaranContoh[] = [
   { id: "p1", kode: "G473FN", nama: "Dika Pratama", kategori: "anak", usia: 8, namaOrtu: "Budi Pratama", noWa: "081234567890", paketId: "k8", slotLabel: "Sab 8 Nov · 08.30", kodePromo: "RAKA", status: "menunggu" },
-  { id: "p2", kode: "H8K2QW", nama: "Sari Wulandari", kategori: "dewasa", noWa: "081298765432", paketId: "d4", slotLabel: "Min 9 Nov · 17.00", status: "menunggu" },
-  { id: "p3", kode: "M5T9XC", nama: "Laras Anjani", kategori: "anak", usia: 10, namaOrtu: "Rina Anjani", noWa: "081377712345", paketId: "k4", slotLabel: "Sab 8 Nov · 15.00", status: "disetujui" },
+  { id: "p2", kode: "H8K2QW", nama: "Sari Wulandari", kategori: "dewasa", noWa: "081298765432", paketId: "d4", slotLabel: "Min 9 Nov · 17.00", status: "menunggu", bayar: { bank: "BCA", nominal: 600000, diunggah: "6 Nov 19.42", berkas: "bukti-sari-bca.jpg" } },
+  { id: "p3", kode: "M5T9XC", nama: "Laras Anjani", kategori: "anak", usia: 10, namaOrtu: "Rina Anjani", noWa: "081377712345", paketId: "k4", slotLabel: "Sab 8 Nov · 15.00", status: "disetujui", bayar: { bank: "Mandiri", nominal: 400000, diunggah: "4 Nov 10.15", berkas: "tf-laras.png" } },
 ];
 
 ringkasanContoh.pendaftaranMenunggu = pendaftaranContoh
@@ -236,3 +237,17 @@ export const sesiBerikutnyaContoh: Record<string, { label: string; mulai: string
   m1: { label: "Sab 14 Nov · 07.00", mulai: "2026-11-14T07:00:00+07:00", nama: "Privat anak · Coach Ilham" },
   m3: { label: "Hari ini · 11.00", mulai: "2026-11-07T11:00:00+07:00", nama: "Semi privat · Coach Riska" },
 };
+
+// Rekening contoh (nomor palsu). Rekening asli diatur owner di Pengaturan dan akan dibaca dari database.
+export const rekeningContoh = [
+  { id: "r1", bank: "BCA", nomor: "1234567890", atasNama: "Ilham Pratama" },
+  { id: "r2", bank: "Mandiri", nomor: "9876543210123", atasNama: "Ilham Pratama" },
+];
+
+import type { Pemberitahuan } from "./pemberitahuan";
+
+export const pemberitahuanContoh: Pemberitahuan[] = [
+  { id: "i1", jenis: "tidak_hadir", judul: "Coach Ilham tidak bisa hadir Sabtu 14 Nov", isi: "Sesi Sabtu 14 Nov diganti Minggu 15 Nov pukul 07.00. Kalau jadwal pengganti tidak cocok, hubungi pelatih.", penulis: "Coach Ilham", untukPengajarId: "ilham", tgl: "2026-11-06" },
+  { id: "i2", jenis: "aturan", judul: "Wajib memakai topi renang silikon", isi: "Mulai pekan depan semua murid wajib memakai topi renang silikon di kolam.", penulis: "Pemilik", untukPengajarId: null, tgl: "2026-11-05" },
+  { id: "i3", jenis: "umum", judul: "Libur 25 Desember", isi: "Tanggal 25 Desember tidak ada sesi. Sesi yang jatuh di tanggal itu diganti di jadwal lain.", penulis: "Pemilik", untukPengajarId: null, tgl: "2026-11-03" },
+];

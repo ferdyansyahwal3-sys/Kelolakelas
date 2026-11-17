@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/PageHeader";
 
 const menu = [
   { href: "/app/pengaturan", nama: "Pengaturan", ket: "Profil, tema, rekening, aturan sesi", icon: "grid", siap: true },
+  { href: "/app/pemberitahuan", nama: "Pemberitahuan", ket: "Info, pelatih tidak hadir, peraturan baru", icon: "bell", siap: true },
+  { href: "/pengajar", nama: "Halaman pelatih", ket: "Pemberitahuan dan pembayaran murid", icon: "coach", siap: true },
   { href: "/app/paket", nama: "Paket dan harga", ket: "Jumlah sesi, masa berlaku, harga", icon: "doc", siap: true },
   { href: "/app/jadwal", nama: "Jadwal dan kuota", ket: "Slot per pengajar", icon: "cal", siap: true },
   { href: "/app/promo", nama: "Promo dan referral", ket: "Kode diskon murid", icon: "tag", siap: true },

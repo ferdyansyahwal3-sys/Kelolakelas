@@ -8,7 +8,7 @@ import type { PendaftaranContoh, StatusPendaftaran } from "@/lib/contoh";
 
 interface Paket { id: string; nama: string; harga: number; jumlahSesi: number }
 interface Promo { kode: string; jenis: "persen" | "nominal"; nilai: number }
-interface Props { awal: PendaftaranContoh[]; paket: Paket[]; promo: Promo[]; usaha: string; linkDaftar: string }
+interface Props { awal: PendaftaranContoh[]; paket: Paket[]; promo: Promo[]; usaha: string; linkDaftar: string; slug: string }
 
 const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`;
 const tab: { id: StatusPendaftaran; nama: string }[] = [
@@ -17,11 +17,12 @@ const tab: { id: StatusPendaftaran; nama: string }[] = [
   { id: "ditolak", nama: "Ditolak" },
 ];
 
-export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar }: Props) {
+export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar, slug }: Props) {
   const [daftar, setDaftar] = useState(awal);
   const [aktif, setAktif] = useState<StatusPendaftaran>("menunggu");
   const [buka, setBuka] = useState<string | null>(null);
   const [konfirmasiTolak, setKonfirmasiTolak] = useState<string | null>(null);
+  const [konfirmasiAcc, setKonfirmasiAcc] = useState<string | null>(null);
   const [tagihan, setTagihan] = useState<Record<string, { nominal: number; tempo: string }>>({});
   const [toast, setToast] = useState("");
   const [tersalin, setTersalin] = useState(false);
@@ -35,6 +36,7 @@ export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar }: Props
     setDaftar((d) => d.map((p) => (p.id === id ? { ...p, status } : p)));
     setBuka(null);
     setKonfirmasiTolak(null);
+    setKonfirmasiAcc(null);
   }
 
   function acc(p: PendaftaranContoh) {
@@ -83,10 +85,11 @@ export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar }: Props
                     <span className="avatar s">{inisial(p.nama)}</span>
                     <span className="grow" style={{ textAlign: "left" }}>
                       <span className="name" style={{ display: "block" }}>{p.nama}</span>
-                      <span className="meta">{p.kategori === "anak" ? "Anak" : "Dewasa"} · {p.slotLabel}</span>
+                      <span className="meta" style={{ display: "block" }}>{p.kategori === "anak" ? "Anak" : "Dewasa"} · {p.slotLabel}</span>
+                      {p.status === "menunggu" && <span className={p.bayar ? "st st-ok" : "st st-free"} style={{ marginTop: 6 }}>{p.bayar ? "Sudah bayar" : "Belum bayar"}</span>}
                     </span>
                   </button>
-                  {p.status === "menunggu" && <button type="button" className="btn btn-sm" onClick={() => acc(p)}>ACC</button>}
+                  {p.status === "menunggu" && <button type="button" className="btn btn-sm" onClick={() => { if (p.bayar) acc(p); else { setBuka(p.id); setKonfirmasiAcc(p.id); } }}>ACC</button>}
                   {p.status === "disetujui" && <span className="st st-ok">Disetujui</span>}
                   {p.status === "ditolak" && <span className="st st-full">Ditolak</span>}
                 </div>
@@ -101,6 +104,20 @@ export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar }: Props
                       <dt>{p.status === "disetujui" && tag ? "Tagihan" : "Total"}</dt><dd><b>{rp(tag ? tag.nominal : total(p))}</b></dd>
                       {tag && <><dt>Jatuh tempo</dt><dd>{tag.tempo}</dd></>}
                     </dl>
+                    {p.bayar ? (
+                      <div className="bukti"><span className="circ"><Icon name="doc" /></span>
+                        <div className="grow"><div className="name">{p.bayar.berkas}</div><div className="meta">Ke {p.bayar.bank} · {rp(p.bayar.nominal)} · diunggah {p.bayar.diunggah}</div></div></div>
+                    ) : p.status === "menunggu" && (
+                      <p className="meta" style={{ margin: 0 }}>Belum ada bukti bayar. Murid membayar lewat halaman bayar di <b>{`/u/${slug}/bayar?kode=${p.kode}`}</b>.</p>
+                    )}
+                    {p.bayar && p.status === "menunggu" && <p className="meta" style={{ margin: 0 }}>Cocokkan nominal dan nama pengirim di mutasi rekening sebelum ACC.</p>}
+                    {konfirmasiAcc === p.id && (
+                      <div className="aksi">
+                        <span className="meta" style={{ flexBasis: "100%" }}>Belum ada bukti bayar. Tetap ACC?</span>
+                        <button type="button" className="btn btn-sm" onClick={() => acc(p)}>Ya, ACC tanpa bukti</button>
+                        <button type="button" className="btn btn-2 btn-sm" onClick={() => setKonfirmasiAcc(null)}>Batal</button>
+                      </div>
+                    )}
                     <div className="aksi">
                       {p.status === "menunggu" && (
                         konfirmasiTolak === p.id ? (

@@ -4,6 +4,7 @@ import { Icon } from "./Icon";
 import { toCsv } from "@/lib/csv";
 import { aturanUntuk, isiTemplate, istilahUntuk, KATEGORI, slugDariNama, syaratUntuk, validasiPengaturan, VARIABEL, type Galat, type Pengaturan } from "@/lib/pengaturan";
 import { labelMetode } from "@/lib/tagihan";
+import { REKENING_MAKS } from "@/lib/rekening";
 import type { MuridContoh } from "@/lib/contoh";
 import type { TagihanOwner } from "@/lib/tagihan";
 
@@ -20,7 +21,7 @@ export function PengaturanForm({ awal, murid, tagihan }: Props) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KUNCI);
-      if (raw) { const d = JSON.parse(raw) as Pengaturan; const gab = { ...awal, ...d, aturan: { ...awal.aturan, ...d.aturan } }; setP(gab); setTersimpan(gab); }
+      if (raw) { const d = JSON.parse(raw) as Pengaturan; const gab = { ...awal, ...d, aturan: { ...awal.aturan, ...d.aturan }, rekening: Array.isArray(d.rekening) ? d.rekening : [] }; setP(gab); setTersimpan(gab); }
     } catch {}
   }, [awal]);
 
@@ -137,15 +138,24 @@ export function PengaturanForm({ awal, murid, tagihan }: Props) {
       </section>
 
       <section className="grp">
-        <h2 className="h2">Info rekening</h2>
+        <h2 className="h2">Rekening pembayaran</h2>
         <div className="surface kartu-form">
-          <p className="meta" style={{ margin: 0 }}>Ditampilkan ke murid setelah pendaftarannya di-ACC, supaya tahu ke mana membayar.</p>
-          <label className="field"><span className="label l2">Bank</span>
-            <input value={p.rekening.bank} onChange={(e) => ubah("rekening", { bank: e.target.value }, "rekening")} placeholder="contoh: BCA" /></label>
-          <label className="field"><span className="label l2">Nomor rekening</span>
-            <input inputMode="numeric" value={p.rekening.nomor} onChange={(e) => { ubah("rekening", { nomor: e.target.value }, "rekening"); bersih("rekening.nomor"); }} autoComplete="off" /><E k="rekening.nomor" /></label>
-          <label className="field"><span className="label l2">Atas nama</span>
-            <input value={p.rekening.atasNama} onChange={(e) => ubah("rekening", { atasNama: e.target.value }, "rekening")} /><E k="rekening" /></label>
+          <p className="meta" style={{ margin: 0 }}>Murid transfer ke rekening ini sebelum pendaftarannya di-ACC, lalu mengirim bukti bayar. Bisa lebih dari satu (maksimal {REKENING_MAKS}), misalnya bank dan e-wallet.</p>
+          {p.rekening.length === 0 && <p className="sub" style={{ margin: 0, fontSize: 13 }}>Belum ada rekening. Tambahkan satu supaya murid tahu ke mana membayar.</p>}
+          {p.rekening.map((r, i) => (
+            <div key={r.id} className="rek">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><b>Rekening {i + 1}</b>
+                <button type="button" className="btn btn-2 btn-sm" onClick={() => { setP((d) => ({ ...d, rekening: d.rekening.filter((x) => x.id !== r.id) })); setGalat({}); }}>Hapus</button></div>
+              <label className="field"><span className="label l2">Bank atau e-wallet</span>
+                <input value={r.bank} onChange={(e) => { setP((d) => ({ ...d, rekening: d.rekening.map((x) => (x.id === r.id ? { ...x, bank: e.target.value } : x)) })); bersih(`rekening.${i}.bank`); }} placeholder="BCA, Mandiri, GoPay…" /><E k={`rekening.${i}.bank`} /></label>
+              <label className="field"><span className="label l2">Nomor</span>
+                <input inputMode="numeric" autoComplete="off" value={r.nomor} onChange={(e) => { setP((d) => ({ ...d, rekening: d.rekening.map((x) => (x.id === r.id ? { ...x, nomor: e.target.value } : x)) })); bersih(`rekening.${i}.nomor`); }} /><E k={`rekening.${i}.nomor`} /></label>
+              <label className="field"><span className="label l2">Atas nama</span>
+                <input value={r.atasNama} onChange={(e) => { setP((d) => ({ ...d, rekening: d.rekening.map((x) => (x.id === r.id ? { ...x, atasNama: e.target.value } : x)) })); bersih(`rekening.${i}.atasNama`); }} /><E k={`rekening.${i}.atasNama`} /></label>
+            </div>
+          ))}
+          <E k="rekening" />
+          <button type="button" className="btn btn-2" disabled={p.rekening.length >= REKENING_MAKS} onClick={() => setP((d) => ({ ...d, rekening: [...d.rekening, { id: `rek-${Date.now()}-${d.rekening.length}`, bank: "", nomor: "", atasNama: "" }] }))}>Tambah rekening</button>
         </div>
       </section>
 

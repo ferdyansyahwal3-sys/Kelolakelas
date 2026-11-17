@@ -8,9 +8,9 @@ const awal: Pengaturan = {
   tema: "gelap",
   istilah: { murid: tenantContoh.istilah.murid, sesi: tenantContoh.istilah.sesi, pengajar: tenantContoh.istilah.pengajar },
   aturan: { ...aturanUntuk("Renang"), daftar: syaratUntuk("Renang", aturanUntuk("Renang"), "sesi") },
-  rekening: { bank: "", nomor: "", atasNama: "" },
+  rekening: [],
   templat: {
-    acc: "Halo {nama}, pendaftaran kamu di {usaha} untuk {slot} sudah disetujui. Total {total}, mohon dibayar sebelum sesi pertama. Terima kasih!",
+    acc: "Halo {nama}, pendaftaran kamu di {usaha} untuk {slot} sudah disetujui. Pembayaran {total} sudah kami terima. Terima kasih!",
     tolak: "Halo {nama}, terima kasih sudah mendaftar di {usaha}. Mohon maaf, pendaftaran untuk {slot} belum bisa kami terima. Silakan pilih slot lain di link pendaftaran ya.",
     pengingat: "Halo {nama}, pengingat dari {usaha}: tagihan {total} jatuh tempo {tempo}. Terima kasih!",
   },

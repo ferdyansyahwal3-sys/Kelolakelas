@@ -28,7 +28,7 @@ export function cariPendaftaran(daftar: CatatanDaftar[], q: Pencarian): CatatanD
 }
 
 export const infoStatus: Record<StatusDaftar, { judul: string; pesan: string }> = {
-  menunggu: { judul: "Menunggu ACC", pesan: "Pemilik akan meninjau pendaftaranmu dan menghubungi lewat WhatsApp." },
-  disetujui: { judul: "Disetujui", pesan: "Pendaftaranmu diterima. Tagihan dan cara bayar dikirim lewat WhatsApp." },
+  menunggu: { judul: "Menunggu ACC", pesan: "Pemilik akan memeriksa pendaftaran dan bukti bayarmu, lalu menghubungi lewat WhatsApp." },
+  disetujui: { judul: "Disetujui", pesan: "Pendaftaranmu diterima dan pembayaran sudah dikonfirmasi. Link pribadi dikirim lewat WhatsApp." },
   ditolak: { judul: "Belum bisa diterima", pesan: "Slot yang kamu pilih belum bisa diterima. Silakan pilih slot lain lewat halaman slot." },
 };

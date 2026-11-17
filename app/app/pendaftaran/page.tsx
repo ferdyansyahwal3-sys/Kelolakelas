@@ -12,6 +12,7 @@ export default function PendaftaranMasuk() {
         promo={promoContoh}
         usaha={tenantContoh.nama}
         linkDaftar={`/u/${tenantContoh.slug}/slot`}
+        slug={tenantContoh.slug}
       />
     </main>
   );

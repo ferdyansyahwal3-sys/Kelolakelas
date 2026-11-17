@@ -1,5 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { KUNCI_INFO } from "./PemberitahuanPanel";
+import { labelInfo, untukMurid, type JenisInfo, type Pemberitahuan } from "@/lib/pemberitahuan";
 import { PageHeader } from "./PageHeader";
 import { pecahRupiah, tglPendek } from "@/lib/format";
 import { bisaAjukanIzin, ringkasKuota } from "@/lib/portal";
@@ -16,8 +18,12 @@ const kelasSesi = { hadir: "st st-ok", izin: "st st-few", alpa: "st st-full" } a
 const namaSesi = { hadir: "Hadir", izin: "Izin", alpa: "Alpa" } as const;
 const tagihanLabel = { lunas: { t: "Lunas", k: "st st-ok" }, belum: { t: "Belum bayar", k: "st st-free" }, menunggu_verifikasi: { t: "Dicek pemilik", k: "st st-few" } } as const;
 
-export function PortalMurid({ usaha, data, sekarang, batasIzinJam }: { usaha: string; data: Data; sekarang: string; batasIzinJam: number }) {
+export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, info }: { usaha: string; data: Data; sekarang: string; batasIzinJam: number; pengajarId: string; info: Pemberitahuan[] }) {
   const [izin, setIzin] = useState(false);
+  const [kabar, setKabar] = useState(info);
+  useEffect(() => {
+    try { const d = JSON.parse(localStorage.getItem(KUNCI_INFO) ?? "null") as Pemberitahuan[] | null; if (Array.isArray(d)) setKabar(untukMurid(d, pengajarId)); } catch {}
+  }, [pengajarId]);
   const k = ringkasKuota(data.sisa, data.total);
   const b = data.berikutnya;
   const boleh = b ? bisaAjukanIzin(b.mulai, sekarang, batasIzinJam) : false;
@@ -27,6 +33,21 @@ export function PortalMurid({ usaha, data, sekarang, batasIzinJam }: { usaha: st
     <div className="shell">
       <main className="scroll" style={{ paddingTop: 20 }}>
         <PageHeader title={`Halo, ${data.nama}`} eyebrow={usaha} chip={data.aktif ? `Pelatih: ${data.pengajar}` : "Paket tidak aktif"} />
+
+        {kabar.length > 0 && (
+          <section className="grp" aria-label="Info dari pelatih">
+            <h2 className="h2">Info dari pelatih</h2>
+            <div className="surface">
+              {kabar.slice(0, 5).map((k) => (
+                <div key={k.id} className="item" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><span className={k.jenis === "tidak_hadir" ? "st st-full" : k.jenis === "aturan" ? "st st-few" : "st st-ok"}>{labelInfo[k.jenis as JenisInfo]}</span><span className="meta">{tglPendek(k.tgl)} · {k.penulis}</span></div>
+                  <div className="name" style={{ whiteSpace: "normal" }}>{k.judul}</div>
+                  <div className="sub" style={{ fontSize: 13 }}>{k.isi}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="panel" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
           <span className="meta">{data.paket}</span>

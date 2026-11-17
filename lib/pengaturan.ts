@@ -1,9 +1,11 @@
+import { validasiRekening, type Rekening } from "./rekening";
+
 export interface Pengaturan {
   profil: { nama: string; kategori: string; kota: string; deskripsi: string; slug: string };
   tema: "gelap" | "terang";
   istilah: { murid: string; sesi: string; pengajar: string };
   aturan: { batasIzinJam: number; masaBerlakuHari: number; toleransiTelatMenit: number; sesiPengganti: boolean; daftar: string[] };
-  rekening: { bank: string; nomor: string; atasNama: string };
+  rekening: Rekening[];
   templat: { acc: string; tolak: string; pengingat: string };
 }
 
@@ -81,10 +83,7 @@ export function validasiPengaturan(p: Pengaturan): Galat {
   if (!Number.isInteger(p.aturan.toleransiTelatMenit) || p.aturan.toleransiTelatMenit < 0 || p.aturan.toleransiTelatMenit > 60) g["aturan.toleransiTelatMenit"] = "Isi 0–60 menit.";
   if (p.aturan.daftar.length > 8 || p.aturan.daftar.some((a) => a.length > 120)) g["aturan.daftar"] = "Maksimal 8 aturan, tiap aturan 120 karakter.";
 
-  const r = p.rekening;
-  const terisi = [r.bank, r.nomor, r.atasNama].filter((x) => x.trim() !== "").length;
-  if (terisi > 0 && terisi < 3) g["rekening"] = "Isi bank, nomor, dan atas nama sekaligus, atau kosongkan semuanya.";
-  else if (terisi === 3 && !/^\d{6,20}$/.test(r.nomor.replace(/[\s-]/g, ""))) g["rekening.nomor"] = "Nomor rekening 6–20 angka.";
+  Object.assign(g, validasiRekening(p.rekening));
 
   for (const k of ["acc", "tolak", "pengingat"] as const) {
     const e = cekTemplat(p.templat[k]);
@@ -132,5 +131,5 @@ export function syaratUntuk(kategori: string, a: AturanSesi, sebutanSesi: string
   const izin = a.batasIzinJam > 0 ? `Izin paling lambat ${a.batasIzinJam} jam sebelum ${s} dimulai, lewat itu ${s} dianggap hadir.` : `Izin bisa diajukan sampai ${s} dimulai.`;
   const telat = a.toleransiTelatMenit > 0 ? `Terlambat lebih dari ${a.toleransiTelatMenit} menit, ${s} tetap berjalan sesuai waktu yang tersisa.` : `Mohon datang tepat waktu, ${s} tidak diperpanjang.`;
   const ganti = a.sesiPengganti ? `${s[0]!.toUpperCase()}${s.slice(1)} yang izin tepat waktu bisa diganti di jadwal lain selama paket masih berlaku.` : `${s[0]!.toUpperCase()}${s.slice(1)} yang izin tidak diganti.`;
-  return [...(SYARAT_KATEGORI[kategori] ?? []), izin, telat, ganti, `Sisa ${s} hangus setelah masa berlaku ${a.masaBerlakuHari} hari habis.`, "Pembayaran dilakukan setelah pendaftaran disetujui."];
+  return [...(SYARAT_KATEGORI[kategori] ?? []), izin, telat, ganti, `Sisa ${s} hangus setelah masa berlaku ${a.masaBerlakuHari} hari habis.`, "Pembayaran dilakukan sebelum pendaftaran disetujui: transfer ke rekening usaha lalu kirim bukti bayar."];
 }

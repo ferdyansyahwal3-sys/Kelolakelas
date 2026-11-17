@@ -36,7 +36,7 @@ export function pesanWa(jenis: "acc" | "tolak", d: { nama: string; usaha: string
   if (jenis === "tolak") {
     return `Halo ${d.nama}, terima kasih sudah mendaftar di ${d.usaha}. Mohon maaf, pendaftaran untuk ${d.slot} belum bisa kami terima. Silakan pilih slot lain di link pendaftaran ya.`;
   }
-  return `Halo ${d.nama}, pendaftaran kamu di ${d.usaha} untuk ${d.slot} sudah disetujui. Total ${rupiah(d.total)}, mohon dibayar sebelum sesi pertama. Terima kasih!`;
+  return `Halo ${d.nama}, pendaftaran kamu di ${d.usaha} untuk ${d.slot} sudah disetujui dan pembayaran ${rupiah(d.total)} sudah kami terima. Sampai jumpa di sesi pertama!`;
 }
 
 export function linkWa(noWa: string, pesan: string): string {

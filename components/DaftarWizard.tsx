@@ -74,7 +74,13 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
         usia: usia ? Number(usia) : undefined, namaOrtu, noWa,
         kodePromo: promoAktif?.kode, setuju,
       });
-      if (r.ok) setHasil({ kode: r.kode, total: r.total });
+      if (r.ok) {
+        setHasil({ kode: r.kode, total: r.total });
+        try {
+          const lama = JSON.parse(localStorage.getItem("kk-pendaftaran-saya") ?? "[]") as unknown[];
+          localStorage.setItem("kk-pendaftaran-saya", JSON.stringify([...lama.slice(-9), { kode: r.kode, nama: nama.trim().split(" ")[0] ?? nama, slot: `${slot.hari} ${slot.jam}`, total: r.total }]));
+        } catch {}
+      }
       else { setGalat(r.galat); setPesan(r.pesan ?? ""); }
     });
   }
@@ -93,8 +99,9 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
             <div className="item"><span className="sub grow">Slot</span><span>{slot.hari} {slot.jam}</span></div>
             <div className="item"><span className="sub grow">Total</span><b>{rp(hasil.total)}</b></div>
           </div>
-          <p className="meta" style={{ margin: 0 }}>Simpan kode ini untuk cek status. Bayar setelah pendaftaran disetujui.</p>
-          <Link href={`/u/${slug}/status`} className="btn">Cek status pendaftaran</Link>
+          <p className="meta" style={{ margin: 0 }}>Simpan kode ini. Transfer lalu kirim bukti bayar supaya pendaftaranmu bisa di-ACC.</p>
+          <Link href={`/u/${slug}/bayar?kode=${hasil.kode}`} className="btn">Bayar dan kirim bukti</Link>
+          <Link href={`/u/${slug}/status`} className="btn btn-2">Cek status pendaftaran</Link>
           <Link href={`/u/${slug}/slot`} className="btn btn-2">Kembali ke slot</Link>
         </main>
       </div>
