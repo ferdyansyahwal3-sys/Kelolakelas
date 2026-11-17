@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { kirimPendaftaran } from "@/app/u/[slug]/daftar/actions";
 import { Icon } from "./Icon";
+import { ThemeToggle } from "./ThemeToggle";
 import { cariPromo, hitungTotal } from "@/lib/harga";
 import { pecahRupiah } from "@/lib/format";
 import { type Galat } from "@/lib/pendaftaran";
@@ -71,7 +72,7 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
     return (
       <div className="shell">
         <main className="scroll" style={{ paddingTop: 28 }}>
-          <span className="circ" style={{ background: "var(--accent)", color: "#fff", boxShadow: "var(--accent-glow)" }}><Icon name="check" /></span>
+          <div className="hrow"><span className="circ" style={{ background: "var(--accent)", color: "#fff", boxShadow: "var(--accent-glow)" }}><Icon name="check" /></span><div className="t" /><ThemeToggle /></div>
           <div className="grp">
             <h1 className="title">Pendaftaran terkirim</h1>
             <p className="label" style={{ margin: 0 }}>Menunggu ACC dari pemilik. Kamu akan dihubungi lewat WhatsApp.</p>
@@ -96,6 +97,7 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
             ? <button type="button" className="circ" onClick={() => setLangkah(2)} aria-label="Kembali"><Icon name="back" /></button>
             : <Link href={`/u/${slug}/slot`} className="circ" aria-label="Kembali ke slot"><Icon name="back" /></Link>}
           <div className="t label">Pendaftaran · {langkah} dari 3</div>
+          <ThemeToggle />
         </div>
         <div className="bar"><i style={{ width: `${(langkah / 3) * 100}%` }} /></div>
 

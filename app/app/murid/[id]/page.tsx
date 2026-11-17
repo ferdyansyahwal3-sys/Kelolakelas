@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Icon } from "@/components/Icon";
+import { PageHeader } from "@/components/PageHeader";
 import { MuridDetail } from "@/components/MuridDetail";
 import { muridContoh, paketContoh, tenantContoh } from "@/lib/contoh";
 
@@ -11,10 +10,7 @@ export default function DetailMurid({ params }: { params: { id: string } }) {
 
   return (
     <main className="scroll" style={{ paddingTop: 20 }}>
-      <div className="hrow">
-        <Link href="/app/murid" className="circ" aria-label="Kembali ke daftar murid"><Icon name="back" /></Link>
-        <h1 className="title t">Detail murid</h1>
-      </div>
+      <PageHeader title="Detail murid" back="/app/murid" />
       <MuridDetail murid={murid} paket={paket} usaha={tenantContoh.nama} />
     </main>
   );

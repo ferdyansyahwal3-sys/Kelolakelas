@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { hariContoh, pengajarContoh, slotContoh, tenantContoh } from "@/lib/contoh";
 import { inisial } from "@/lib/format";
 import { hitungSlot, kelasStatusSlot } from "@/lib/slot";
@@ -19,6 +20,7 @@ export default function SlotTersedia({ params, searchParams }: { params: { slug:
             <div style={{ fontWeight: 600 }}>{tenantContoh.nama}</div>
             <div className="label" style={{ fontSize: 12 }}>{tenantContoh.kota} · {tenantContoh.kategori}</div>
           </div>
+          <ThemeToggle />
           <a className="circ" href="https://wa.me/" aria-label="Chat WhatsApp"><Icon name="wa" /></a>
         </div>
 
