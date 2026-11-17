@@ -14,6 +14,7 @@ const paths: Record<string, React.ReactNode> = {
   doc: (<><path d="M6 3.5h8l4 4V20.5H6z" /><path d="M14 3.5v4h4M9 12.5h6M9 16h4" /></>),
   tag: (<><path d="M4 12.5V4h8.5L20 11.5 11.5 20z" /><circle cx="8.5" cy="8.5" r="1.4" /></>),
   chart: <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" />,
+  coach: (<><circle cx="12" cy="7.5" r="3.5" /><path d="M5 20c1-4 3.8-6 7-6s6 2 7 6" /></>),
   back: <path d="m15 6-6 6 6 6" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   sun: (<><circle cx="12" cy="12" r="4" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" /></>),

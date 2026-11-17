@@ -207,3 +207,12 @@ export const pemakaianPromoContoh: { id: string; kode: string; nama: string; tgl
   { id: "u3", kode: "RAKA10", nama: "Tara Wijaya", tgl: "2026-11-03", potongan: 50000 },
   { id: "u4", kode: "AWALNOV", nama: "Mita Lestari", tgl: "2026-11-02", potongan: 75000 },
 ];
+
+import type { PengajarOwner, Plan } from "./pengajar";
+
+export const PLAN_CONTOH: Plan = "pro";
+
+export const pengajarOwnerContoh: PengajarOwner[] = [
+  { id: "ilham", nama: "Coach Ilham", email: "ilham@contoh.id", pemilik: true, status: "aktif" },
+  { id: "riska", nama: "Coach Riska", email: "riska@contoh.id", pemilik: false, status: "aktif" },
+];
