@@ -60,7 +60,7 @@ export function PaketOwnerList({ awal, dipakai }: Props) {
       {tampil.length === 0 ? (
         <div className="surface kosong"><span className="circ"><Icon name="doc" /></span><h2 className="h2">Belum ada paket</h2><p className="sub" style={{ margin: 0, fontSize: 13 }}>Buat paket supaya murid bisa memilih saat mendaftar.</p></div>
       ) : (
-        <div className="surface">
+        <div className="surface batas batas-tinggi">
           {tampil.map((p) => {
             const terbuka = buka === p.id;
             const pakai = dipakai[p.id] ?? 0;

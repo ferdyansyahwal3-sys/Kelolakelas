@@ -103,7 +103,7 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal }: { murid: M
 
       <section className="grp">
         <h2 className="h2">Tagihan</h2>
-        <div className="surface">
+        <div className="surface batas">
           {tagihan.map((t) => {
             const l = labelBayar(t.status);
             return (
@@ -122,7 +122,7 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal }: { murid: M
         {murid.riwayat.length === 0 ? (
           <p className="sub" style={{ margin: 0, fontSize: 13 }}>Belum ada sesi. Riwayat muncul setelah sesi pertama.</p>
         ) : (
-          <div className="surface">
+          <div className="surface batas">
             {murid.riwayat.map((r) => (
               <div key={r.tgl} className="item"><span className="grow">{r.tgl}</span><span className={kelasSesi[r.status]}>{namaSesi[r.status]}</span></div>
             ))}
@@ -135,7 +135,7 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal }: { murid: M
         {murid.catatan.length === 0 ? (
           <p className="sub" style={{ margin: 0, fontSize: 13 }}>Belum ada catatan.</p>
         ) : (
-          <div className="surface">
+          <div className="surface batas">
             {murid.catatan.map((c) => (
               <div key={c.tgl} className="item" style={{ alignItems: "flex-start" }}><span className="meta" style={{ width: 46, paddingTop: 2 }}>{c.tgl}</span><span className="grow">{c.teks}</span></div>
             ))}

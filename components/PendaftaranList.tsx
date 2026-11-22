@@ -73,7 +73,7 @@ export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar, slug }:
           )}
         </div>
       ) : (
-        <div className="surface">
+        <div className="surface batas batas-tinggi">
           {tampil.map((p) => {
             const terbuka = buka === p.id;
             const pk = infoPaket(p);

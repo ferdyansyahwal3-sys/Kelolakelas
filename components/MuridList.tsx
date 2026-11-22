@@ -38,7 +38,7 @@ export function MuridList({ murid, linkDaftar }: { murid: MuridContoh[]; linkDaf
           {murid.length === 0 && <button type="button" className="btn" onClick={salin}><Icon name="link" />{tersalin ? "Link tersalin" : "Salin link pendaftaran"}</button>}
         </div>
       ) : (
-        <div className="surface">
+        <div className="surface batas batas-tinggi">
           {hasil.map((m) => {
             const b = labelBayar(m.bayar);
             const sedikit = m.aktif && m.sisaSesi <= SISA_SEDIKIT;

@@ -4,6 +4,10 @@ export const tenantContoh = {
   slug: "renang-ilham",
   kategori: "Renang anak & dewasa",
   kota: "Bekasi",
+  kategoriUsaha: "Renang",
+  deskripsi: "Les renang privat dan semi privat untuk anak dan dewasa. Kelas kecil, pelatih sabar, dari belajar mengapung sampai gaya bebas yang rapi.",
+  area: "Kolam A dan B, Bekasi",
+  noWa: "081234567890",
   pemilik: "Coach Ilham",
   istilah: { murid: "murid", sesi: "sesi", pengajar: "coach" },
 };
@@ -150,7 +154,21 @@ export const jadwalContoh: SlotJadwal[] = [
   { id: "j8", pengajarId: "riska", hari: 6, jam: "09.00", nama: "Semi privat", durasi: 60, kuota: 3, lokasi: "Kolam B", terisi: 2 },
   { id: "j9", pengajarId: "riska", hari: 7, jam: "08.00", nama: "Privat dewasa", durasi: 60, kuota: 1, lokasi: "Kolam A", terisi: 1 },
   { id: "j10", pengajarId: "riska", hari: 5, jam: "15.30", nama: "Privat anak", durasi: 45, kuota: 1, lokasi: "Kolam A", terisi: 0 },
+  { id: "j11", pengajarId: "riska", hari: 6, jam: "11.00", nama: "Semi privat", durasi: 60, kuota: 3, lokasi: "Kolam B", terisi: 1 },
+  { id: "j12", pengajarId: "ilham", hari: 7, jam: "09.00", nama: "Kelas grup", durasi: 60, kuota: 10, lokasi: "Kolam B", terisi: 7 },
 ];
+
+// Siapa yang terdaftar tetap di tiap slot (jumlahnya sama dengan `terisi` di jadwalContoh). Di database ini = baris murid yang terhubung ke jadwal.
+export const pesertaTetapContoh: Record<string, string[]> = {
+  j1: ["m1"], j2: [], j3: ["m6"], j4: ["m2", "m4"], j5: [],
+  j6: ["m2"], j7: ["m1"], j8: ["m5", "m7"], j9: ["m7"], j10: [], j11: ["m3"], j12: ["m1", "m2", "m3", "m4", "m5", "m6", "m7"],
+};
+
+// Absen yang sudah terhitung di `sisaSesi` murid contoh (mis. Aisyah 7 Nov hadir = sisa 5 sudah memotongnya).
+export const absensiAwalContoh: Record<string, "hadir" | "izin" | "alpa"> = {
+  "j1|2026-11-07|m1": "hadir",
+  "j8|2026-11-07|m5": "hadir",
+};
 
 import type { TagihanOwner } from "./tagihan";
 
@@ -170,6 +188,8 @@ export const tagihanContoh: TagihanOwner[] = [
 import type { Pembayaran } from "./rekap";
 
 export const bagiHasilContoh: Record<string, number> = { ilham: 0, riska: 40 };
+// Gaji pelatih yang sudah ditandai dibayar owner (kunci: pengajar|bulan -> tanggal uang masuk). Oktober sengaja belum, supaya alur "tandai dibayar" bisa dicoba.
+export const gajiDibayarContoh: Record<string, string> = { "riska|2026-06": "2026-07-05", "riska|2026-07": "2026-08-05", "riska|2026-08": "2026-09-05", "riska|2026-09": "2026-10-05" };
 export const bagiNominalContoh: Record<string, number> = { ilham: 0, riska: 750000 };
 
 const NAMA_PAKET: Record<number, string> = { 400000: "4x per bulan", 600000: "Dewasa 4x per bulan", 670000: "8x per bulan (promo)", 720000: "8x per bulan" };
@@ -249,5 +269,12 @@ import type { Pemberitahuan } from "./pemberitahuan";
 export const pemberitahuanContoh: Pemberitahuan[] = [
   { id: "i1", jenis: "tidak_hadir", judul: "Coach Ilham tidak bisa hadir Sabtu 14 Nov", isi: "Sesi Sabtu 14 Nov diganti Minggu 15 Nov pukul 07.00. Kalau jadwal pengganti tidak cocok, hubungi pelatih.", penulis: "Coach Ilham", untukPengajarId: "ilham", tgl: "2026-11-06" },
   { id: "i2", jenis: "aturan", judul: "Wajib memakai topi renang silikon", isi: "Mulai pekan depan semua murid wajib memakai topi renang silikon di kolam.", penulis: "Pemilik", untukPengajarId: null, tgl: "2026-11-05" },
+  { id: "i4", jenis: "umum", judul: "Bawa kacamata renang cadangan", isi: "Kolam B sedang bersihkan filter, air agak keruh. Murid sesi Sabtu 16.00 sebaiknya bawa kacamata cadangan.", penulis: "Coach Ilham", untukPengajarId: "ilham", untukSlotId: "j4", tgl: "2026-11-07" },
   { id: "i3", jenis: "umum", judul: "Libur 25 Desember", isi: "Tanggal 25 Desember tidak ada sesi. Sesi yang jatuh di tanggal itu diganti di jadwal lain.", penulis: "Pemilik", untukPengajarId: null, tgl: "2026-11-03" },
+];
+
+// Tagihan langganan KelolaKelas milik usaha contoh (dibayar owner lewat gateway). Di database: tabel subscription_invoices.
+export const tagihanLanggananContoh = [
+  { orderId: "KK-202611-0001", plan: "pro" as const, bulan: 1, nominal: 99000, akhirLama: "2026-12-05" as string | null },
+  { orderId: "KK-202611-0002", plan: "pro" as const, bulan: 12, nominal: 990000, akhirLama: "2026-12-05" as string | null },
 ];

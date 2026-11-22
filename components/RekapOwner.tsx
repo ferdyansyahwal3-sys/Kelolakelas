@@ -1,19 +1,37 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { toCsv } from "@/lib/csv";
 import { pecahRupiah, ringkasRupiah } from "@/lib/format";
+import { batalkanGajiDibayar, kunciGaji, tandaiGajiDibayar, type GajiDibayar } from "@/lib/gaji";
 import { bagiHasil, geserBulan, namaBulan, perPaket, perubahan, ringkasBulan, tren6, validasiNilai, type ModeBagi, type Pembayaran } from "@/lib/rekap";
 
-interface Props { pembayaran: Pembayaran[]; pengajar: { id: string; nama: string }[]; persenAwal: Record<string, number>; nominalAwal: Record<string, number>; bulanAwal: string; bulanMin: string }
+interface Props { hariIni: string; dibayarAwal: GajiDibayar; pembayaran: Pembayaran[]; pengajar: { id: string; nama: string }[]; persenAwal: Record<string, number>; nominalAwal: Record<string, number>; bulanAwal: string; bulanMin: string }
 const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`;
 
-export function RekapOwner({ pembayaran, pengajar, persenAwal, nominalAwal, bulanAwal, bulanMin }: Props) {
+export function RekapOwner({ hariIni, dibayarAwal, pembayaran, pengajar, persenAwal, nominalAwal, bulanAwal, bulanMin }: Props) {
   const [bulan, setBulan] = useState(bulanAwal);
   const [mode, setMode] = useState<ModeBagi>("persen");
   const [nilai, setNilai] = useState<Record<ModeBagi, Record<string, number>>>({ persen: persenAwal, nominal: nominalAwal });
   const [galat, setGalat] = useState<Record<string, string>>({});
   const [toast, setToast] = useState("");
+  const [dibayar, setDibayar] = useState<GajiDibayar>(dibayarAwal);
+  const [bukaGaji, setBukaGaji] = useState<string | null>(null);
+  const [tglGaji, setTglGaji] = useState("");
+  const [galatGaji, setGalatGaji] = useState("");
+
+  // Bagi hasil dan status gaji disimpan di perangkat ini supaya halaman pelatih di perangkat yang sama membaca angka yang sama.
+  useEffect(() => {
+    try {
+      const b = JSON.parse(localStorage.getItem("kk-bagi-hasil") ?? "null") as { mode?: ModeBagi; nilai?: Record<ModeBagi, Record<string, number>> } | null;
+      if (b?.mode === "persen" || b?.mode === "nominal") setMode(b.mode);
+      if (b?.nilai?.persen && b.nilai.nominal) setNilai({ persen: { ...persenAwal, ...b.nilai.persen }, nominal: { ...nominalAwal, ...b.nilai.nominal } });
+      const g = JSON.parse(localStorage.getItem("kk-gaji-dibayar") ?? "null") as GajiDibayar | null;
+      if (g && typeof g === "object" && !Array.isArray(g)) setDibayar(g);
+    } catch {}
+  }, [persenAwal, nominalAwal]);
+  useEffect(() => { try { localStorage.setItem("kk-bagi-hasil", JSON.stringify({ mode, nilai })); } catch {} }, [mode, nilai]);
+  const simpanDibayar = (d: GajiDibayar) => { setDibayar(d); try { localStorage.setItem("kk-gaji-dibayar", JSON.stringify(d)); } catch {} };
 
   const ini = ringkasBulan(pembayaran, bulan);
   const lalu = ringkasBulan(pembayaran, geserBulan(bulan, -1));
@@ -95,7 +113,7 @@ export function RekapOwner({ pembayaran, pengajar, persenAwal, nominalAwal, bula
       <section className="grp">
         <h2 className="h2">Per paket</h2>
         {paket.length === 0 ? <p className="sub" style={{ margin: 0, fontSize: 13 }}>Belum ada pembayaran di bulan ini.</p> : (
-          <div className="surface">
+          <div className="surface batas">
             {paket.map((p) => (
               <div key={p.paket} className="item" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -133,6 +151,27 @@ export function RekapOwner({ pembayaran, pengajar, persenAwal, nominalAwal, bula
               {galat[b.id] && <span className="galat" role="alert">{galat[b.id]}</span>}
               {b.melebihi && !galat[b.id] && <span className="meta">Nominal melebihi omzet bulan ini, dihitung sebesar omzetnya.</span>}
               <dl className="mini-dl"><dt>Bagian pengajar</dt><dd>{rp(b.bagianPengajar)}</dd><dt>Bagian owner</dt><dd>{rp(b.bagianOwner)}</dd></dl>
+              {bulan < bulanAwal && b.bagianPengajar > 0 && (() => {
+                const tgl = dibayar[kunciGaji(b.id, bulan)];
+                if (tgl) return (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <span className="st st-ok">Gaji sudah dibayar · {new Date(tgl).toLocaleDateString("id-ID", { day: "numeric", month: "short", timeZone: "UTC" })}</span>
+                    <button type="button" className="btn btn-2 btn-sm" onClick={() => simpanDibayar(batalkanGajiDibayar(dibayar, b.id, bulan))}>Batalkan tanda</button>
+                  </div>
+                );
+                if (bukaGaji === b.id) return (
+                  <div className="form-catatan">
+                    <label className="field"><span className="label l2">Tanggal uang masuk ke {b.nama}</span>
+                      <input type="date" value={tglGaji} min={`${bulan}-01`} max={hariIni} onChange={(e) => { setTglGaji(e.target.value); setGalatGaji(""); }} />
+                      {galatGaji && <span className="galat" role="alert">{galatGaji}</span>}</label>
+                    <div className="aksi">
+                      <button type="button" className="btn btn-sm" onClick={() => { const h = tandaiGajiDibayar(dibayar, b.id, bulan, tglGaji, hariIni, bulanAwal); if (!h.ok) { setGalatGaji(h.galat); return; } simpanDibayar(h.dibayar); setBukaGaji(null); setToast(`Gaji ${b.nama} ${namaBulan(bulan)} ditandai sudah dibayar.`); setTimeout(() => setToast(""), 3500); }}>Simpan</button>
+                      <button type="button" className="btn btn-2 btn-sm" onClick={() => { setBukaGaji(null); setGalatGaji(""); }}>Batal</button>
+                    </div>
+                  </div>
+                );
+                return <button type="button" className="btn btn-2 btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => { setBukaGaji(b.id); setTglGaji(hariIni); setGalatGaji(""); }}>Tandai gaji {namaBulan(bulan)} sudah dibayar</button>;
+              })()}
             </div>
           ))}
           <div className="item" style={{ justifyContent: "space-between" }}><b>Bersih untuk owner</b><b>{rp(bagi.ownerTotal)}</b></div>

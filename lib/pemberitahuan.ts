@@ -8,6 +8,8 @@ export interface Pemberitahuan {
   isi: string;
   penulis: string;
   untukPengajarId: string | null; // null = semua murid
+  /** Bila diisi, hanya murid yang terdaftar di slot ini yang melihatnya (mengalahkan untukPengajarId). */
+  untukSlotId?: string | null;
   tgl: string; // yyyy-mm-dd
 }
 
@@ -29,6 +31,13 @@ export function targetDiizinkan(peran: Peran, pelatihId: string | null, target: 
   return pelatihId !== null && target === pelatihId;
 }
 
-export function untukMurid(daftar: Pemberitahuan[], pengajarId: string): Pemberitahuan[] {
-  return daftar.filter((p) => p.untukPengajarId === null || p.untukPengajarId === pengajarId).sort((a, b) => (a.tgl < b.tgl ? 1 : a.tgl > b.tgl ? -1 : 0));
+/** Pelatih hanya boleh menulis untuk sesi miliknya. */
+export function slotDiizinkan(peran: Peran, pelatihId: string | null, pemilikSlotId: string): boolean {
+  if (peran === "owner") return true;
+  return pelatihId !== null && pemilikSlotId === pelatihId;
+}
+
+/** `slotIds` = slot tempat murid ini terdaftar. Info khusus sesi hanya tampil bagi murid di sesi itu. */
+export function untukMurid(daftar: Pemberitahuan[], pengajarId: string, slotIds: string[] = []): Pemberitahuan[] {
+  return daftar.filter((p) => (p.untukSlotId ? slotIds.includes(p.untukSlotId) : p.untukPengajarId === null || p.untukPengajarId === pengajarId)).sort((a, b) => (a.tgl < b.tgl ? 1 : a.tgl > b.tgl ? -1 : 0));
 }

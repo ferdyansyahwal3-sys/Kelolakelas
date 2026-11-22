@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PortalMurid } from "@/components/PortalMurid";
 import { aturanUntuk } from "@/lib/pengaturan";
 import { untukMurid } from "@/lib/pemberitahuan";
-import { muridContoh, paketContoh, pemberitahuanContoh, pengajarContoh, SEKARANG_CONTOH, sesiBerikutnyaContoh, tenantContoh, tokenPortalContoh } from "@/lib/contoh";
+import { muridContoh, paketContoh, pemberitahuanContoh, pengajarContoh, pesertaTetapContoh, SEKARANG_CONTOH, sesiBerikutnyaContoh, tenantContoh, tokenPortalContoh } from "@/lib/contoh";
 import { tokenValid } from "@/lib/portal";
 
 export const metadata: Metadata = { title: "Portal murid", robots: { index: false, follow: false }, referrer: "no-referrer" };
@@ -16,6 +16,7 @@ export default function Portal({ params }: { params: { slug: string; token: stri
   if (!m || params.slug !== tenantContoh.slug) notFound();
   const paket = paketContoh.find((p) => p.id === m.paketId);
   const pengajarId = pengajarContoh.find((x) => x.nama === m.pengajar)?.id ?? "";
+  const slotIds = Object.keys(pesertaTetapContoh).filter((sid) => pesertaTetapContoh[sid]!.includes(m.id));
 
   // Hanya data murid ini yang dikirim ke browser. Nomor WA dan data murid lain tidak ikut.
   return (
@@ -37,7 +38,8 @@ export default function Portal({ params }: { params: { slug: string; token: stri
       sekarang={SEKARANG_CONTOH}
       batasIzinJam={aturanUntuk("Renang").batasIzinJam}
       pengajarId={pengajarId}
-      info={untukMurid(pemberitahuanContoh, pengajarId)}
+      slotIds={slotIds}
+      info={untukMurid(pemberitahuanContoh, pengajarId, slotIds)}
     />
   );
 }

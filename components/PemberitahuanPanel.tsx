@@ -1,16 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
-import { labelInfo, targetDiizinkan, validasiPemberitahuan, type JenisInfo, type Pemberitahuan, type Peran } from "@/lib/pemberitahuan";
+import { labelInfo, slotDiizinkan, targetDiizinkan, validasiPemberitahuan, type JenisInfo, type Pemberitahuan, type Peran } from "@/lib/pemberitahuan";
 import { tglPendek } from "@/lib/format";
 
 export const KUNCI_INFO = "kk-pemberitahuan";
-interface Props { awal: Pemberitahuan[]; pengajar: { id: string; nama: string }[]; peran: Peran; saya: { id: string | null; nama: string }; hariIni: string }
+interface SlotInfo { id: string; pengajarId: string; hari: number; jam: string; nama: string }
+interface Props { awal: Pemberitahuan[]; pengajar: { id: string; nama: string }[]; peran: Peran; saya: { id: string | null; nama: string }; hariIni: string; jadwal?: SlotInfo[] }
+const HARI = ["", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 const kelas: Record<JenisInfo, string> = { umum: "st st-ok", tidak_hadir: "st st-full", aturan: "st st-few" };
 
-export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni }: Props) {
+export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwal = [] }: Props) {
   const [daftar, setDaftar] = useState(awal);
-  const [form, setForm] = useState({ jenis: "umum" as JenisInfo, judul: "", isi: "", target: peran === "pelatih" ? (saya.id ?? "") : "semua" });
+  const [form, setForm] = useState({ jenis: "umum" as JenisInfo, judul: "", isi: "", target: peran === "pelatih" ? (saya.id ?? "") : "semua", slotId: "" });
+  const slotBisa = jadwal.filter((x) => slotDiizinkan(peran, saya.id, x.pengajarId)).sort((a, b) => a.hari - b.hari || a.jam.localeCompare(b.jam));
+  const labelSlot = (x: SlotInfo) => `${HARI[x.hari]} ${x.jam} · ${x.nama}${peran === "owner" ? ` · ${pengajar.find((p) => p.id === x.pengajarId)?.nama ?? ""}` : ""}`;
   const [galat, setGalat] = useState<Record<string, string>>({});
   const [hapus, setHapus] = useState<string | null>(null);
   const [toast, setToast] = useState("");
@@ -22,18 +26,23 @@ export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni }: Pro
   const simpanLokal = (d: Pemberitahuan[]) => { try { localStorage.setItem(KUNCI_INFO, JSON.stringify(d)); } catch {} };
   const info = (t: string) => { setToast(t); setTimeout(() => setToast(""), 3500); };
   const bersih = (k: string) => setGalat((g) => { const n = { ...g }; delete n[k]; return n; });
-  const tujuan = (p: Pemberitahuan) => (p.untukPengajarId === null ? "Semua murid" : `Murid ${pengajar.find((x) => x.id === p.untukPengajarId)?.nama ?? ""}`);
+  const tujuan = (p: Pemberitahuan) => (p.untukSlotId ? `Murid sesi ${(() => { const x = jadwal.find((j) => j.id === p.untukSlotId); return x ? `${HARI[x.hari]} ${x.jam} ${x.nama}` : "tertentu"; })()}` : p.untukPengajarId === null ? "Semua murid" : `Murid ${pengajar.find((x) => x.id === p.untukPengajarId)?.nama ?? ""}`);
 
   function kirim() {
     const g = validasiPemberitahuan(form);
-    const target = form.target === "semua" ? null : form.target;
-    if (!targetDiizinkan(peran, saya.id, target)) g.target = "Kamu hanya bisa menulis untuk muridmu sendiri.";
+    const sesi = form.target === "sesi";
+    const target = form.target === "semua" || sesi ? null : form.target;
+    const slot = sesi ? jadwal.find((x) => x.id === form.slotId) : undefined;
+    if (sesi) {
+      if (!slot) g.target = "Pilih sesinya.";
+      else if (!slotDiizinkan(peran, saya.id, slot.pengajarId)) g.target = "Kamu hanya bisa menulis untuk sesi milikmu sendiri.";
+    } else if (!targetDiizinkan(peran, saya.id, target)) g.target = "Kamu hanya bisa menulis untuk muridmu sendiri.";
     setGalat(g);
     if (Object.keys(g).length > 0) return;
-    const baru: Pemberitahuan = { id: `info-${Date.now()}`, jenis: form.jenis, judul: form.judul.trim(), isi: form.isi.trim(), penulis: saya.nama, untukPengajarId: target, tgl: hariIni };
+    const baru: Pemberitahuan = { id: `info-${Date.now()}`, jenis: form.jenis, judul: form.judul.trim(), isi: form.isi.trim(), penulis: saya.nama, untukPengajarId: target, ...(slot ? { untukSlotId: slot.id } : {}), tgl: hariIni };
     const d = [baru, ...daftar];
     setDaftar(d); simpanLokal(d);
-    setForm({ ...form, judul: "", isi: "" });
+    setForm({ ...form, judul: "", isi: "", slotId: "" });
     info("Pemberitahuan terkirim ke portal murid.");
   }
 
@@ -45,14 +54,23 @@ export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni }: Pro
           <div className="seg" role="radiogroup" aria-label="Jenis">
             {(Object.keys(labelInfo) as JenisInfo[]).map((j) => <button key={j} type="button" role="radio" aria-checked={form.jenis === j} className={form.jenis === j ? "on" : ""} onClick={() => setForm({ ...form, jenis: j })}>{j === "umum" ? "Info" : j === "tidak_hadir" ? "Tidak hadir" : "Peraturan"}</button>)}
           </div>
-          {peran === "owner" && (
-            <label className="field"><span className="label l2">Untuk</span>
-              <select value={form.target} onChange={(e) => { setForm({ ...form, target: e.target.value }); bersih("target"); }}>
-                <option value="semua">Semua murid</option>
-                {pengajar.map((p) => <option key={p.id} value={p.id}>Murid {p.nama}</option>)}
+          <label className="field"><span className="label l2">Untuk</span>
+            <select value={form.target} onChange={(e) => { setForm({ ...form, target: e.target.value, slotId: "" }); bersih("target"); }}>
+              {peran === "owner" ? (
+                <>
+                  <option value="semua">Semua murid</option>
+                  {pengajar.map((p) => <option key={p.id} value={p.id}>Murid {p.nama}</option>)}
+                </>
+              ) : <option value={saya.id ?? ""}>Semua murid {saya.nama}</option>}
+              {slotBisa.length > 0 && <option value="sesi">Sesi tertentu…</option>}
+            </select></label>
+          {form.target === "sesi" && (
+            <label className="field"><span className="label l2">Pilih sesi (hanya murid di sesi ini yang menerima)</span>
+              <select value={form.slotId} onChange={(e) => { setForm({ ...form, slotId: e.target.value }); bersih("target"); }}>
+                <option value="">Pilih sesi…</option>
+                {slotBisa.map((x) => <option key={x.id} value={x.id}>{labelSlot(x)}</option>)}
               </select></label>
           )}
-          {peran === "pelatih" && <p className="meta" style={{ margin: 0 }}>Terkirim ke murid {saya.nama}.</p>}
           {galat.target && <span className="galat" role="alert">{galat.target}</span>}
           <label className="field"><span className="label l2">Judul</span>
             <input value={form.judul} onChange={(e) => { setForm({ ...form, judul: e.target.value }); bersih("judul"); }} placeholder="Contoh: Sesi Sabtu diganti Minggu" />{galat.judul && <span className="galat" role="alert">{galat.judul}</span>}</label>
@@ -65,7 +83,7 @@ export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni }: Pro
       <section className="grp">
         <h2 className="h2">Terkirim</h2>
         {daftar.length === 0 ? <p className="sub" style={{ margin: 0, fontSize: 13 }}>Belum ada pemberitahuan.</p> : (
-          <div className="surface">
+          <div className="surface batas batas-tinggi">
             {daftar.map((p) => (
               <div key={p.id} className="item" style={{ alignItems: "flex-start", flexDirection: "column", gap: 6 }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><span className={kelas[p.jenis]}>{labelInfo[p.jenis]}</span><span className="meta">{tglPendek(p.tgl)} · {p.penulis} · {tujuan(p)}</span></div>

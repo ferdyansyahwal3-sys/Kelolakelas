@@ -73,7 +73,7 @@ export function PromoOwnerList({ awal, pemakaian, murid, hariIni }: Props) {
           <p className="sub" style={{ margin: 0, fontSize: 13 }}>{tab === "promo" ? "Buat kode untuk diskon pendaftaran." : "Beri murid kode sendiri supaya bisa mengajak teman."}</p>
         </div>
       ) : (
-        <div className="surface">
+        <div className="surface batas batas-tinggi">
           {tampil.map((p) => {
             const s = statusPromo(p, hariIni);
             const terbuka = buka === p.id;

@@ -53,7 +53,7 @@ export function PengajarOwnerList({ awal, plan, ringkas }: Props) {
         <span className="meta">{plan === "pro" ? "Pengajar tidak dibatasi." : "Starter untuk 1 pengajar. Upgrade ke Pro untuk menambah pelatih lain."}</span>
       </div>
 
-      <div className="surface">
+      <div className="surface batas batas-tinggi">
         {daftar.map((p) => {
           const terbuka = buka === p.id;
           const r = ringkas[p.id] ?? { murid: 0, slot: 0 };

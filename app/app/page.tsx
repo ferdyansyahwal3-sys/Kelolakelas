@@ -2,14 +2,21 @@ import { Icon } from "@/components/Icon";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { pecahRupiah, inisial } from "@/lib/format";
 import { getIstilah, kapital } from "@/lib/istilah";
-import { ringkasanContoh, tenantContoh } from "@/lib/contoh";
+import { ChecklistOnboarding } from "@/components/ChecklistOnboarding";
+import { HARI_INI, jadwalContoh, muridContoh, paketOwnerContoh, pesertaTetapContoh, rekeningContoh, ringkasanContoh, tagihanContoh, tenantContoh } from "@/lib/contoh";
+import { ringkasanPagi } from "@/lib/ringkasan";
+import { sesiPadaTanggal } from "@/lib/sesi";
 import Link from "next/link";
 
 export default function DashboardOwner() {
-  const { pemasukanBulanIni, pendaftaranMenunggu, hariIni } = ringkasanContoh;
+  const { pemasukanBulanIni, pendaftaranMenunggu } = ringkasanContoh;
   const total = pecahRupiah(pemasukanBulanIni);
   const istilah = getIstilah(tenantContoh.istilah);
-  const jumlahSesi = hariIni.reduce((n, h) => n + h.jumlah, 0);
+  const ringkas = ringkasanPagi(
+    sesiPadaTanggal(jadwalContoh, pesertaTetapContoh, [], HARI_INI),
+    { pendaftaranMenunggu: pendaftaranMenunggu.length, buktiPerluDicek: tagihanContoh.filter((t) => t.status === "menunggu_verifikasi").length, tagihanTelat: tagihanContoh.filter((t) => t.status === "belum" && t.tempo < HARI_INI).length },
+    { sesi: istilah.sesi, murid: istilah.murid },
+  );
 
   return (
     <main className="scroll" style={{ paddingTop: 28 }}>
@@ -30,16 +37,18 @@ export default function DashboardOwner() {
 
       <section className="grp">
         <div className="sec-head" style={{ color: "var(--head-text)" }}>
-          <h2 className="h2">Hari ini · {jumlahSesi} {istilah.sesi}</h2>
-          <Link href="/app/jadwal" className="link" style={{ color: "var(--head-text-2)" }}>Jadwal</Link>
+          <h2 className="h2">Ringkasan pagi</h2>
+          <Link href="/app/sesi" className="link" style={{ color: "var(--head-text-2)" }}>Absen</Link>
         </div>
+        <p className="ringkasan-judul">{ringkas.judul}</p>
         <div className="glasscards">
-          {hariIni.map((h) => (
-            <div key={h.id} className={h.jumlah === 0 ? "gcard empty" : "gcard"}>
+          {ringkas.kartu.map((h) => (
+            <div key={h.id} className={h.sesi === 0 ? "gcard empty" : "gcard"}>
               <span className="k">{h.label}</span>
               <div>
-                <div className="v">{h.jumlah === 0 ? "Kosong" : `${h.jumlah} ${istilah.sesi}`}</div>
-                {h.jam && <div className="m">{h.jam}</div>}
+                <div className="v">{h.sesi === 0 ? "Kosong" : `${h.sesi} ${istilah.sesi}`}</div>
+                {h.sesi > 0 && <div className="m">{h.rentang} · {h.murid} {istilah.murid}</div>}
+                {h.hampirPenuh > 0 && <div className="m">{h.hampirPenuh} hampir penuh</div>}
               </div>
             </div>
           ))}
@@ -56,12 +65,17 @@ export default function DashboardOwner() {
         <Link href="/app/lainnya"><Icon name="grid" />Lainnya</Link>
       </nav>
 
+      <ChecklistOnboarding awal={{
+        profil: { nama: tenantContoh.nama, kategori: tenantContoh.kategoriUsaha, kota: tenantContoh.kota, slug: tenantContoh.slug },
+        paketAktif: paketOwnerContoh.filter((p) => p.aktif).length, slot: jadwalContoh.length, rekening: rekeningContoh.length, murid: muridContoh.filter((m) => m.aktif).length,
+      }} />
+
       <section className="grp">
         <div className="sec-head">
           <h2 className="h2">Menunggu ACC</h2>
           <Link href="/app/pendaftaran" className="link">Semua <Icon name="ne" className="ic" /></Link>
         </div>
-        <div className="surface">
+        <div className="surface batas">
           {pendaftaranMenunggu.length === 0 ? (
             <div className="item"><span className="sub">Belum ada pendaftaran. Bagikan link pendaftaran ke grup WA.</span></div>
           ) : (

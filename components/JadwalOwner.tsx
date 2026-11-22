@@ -105,7 +105,7 @@ export function JadwalOwner({ awal, pengajar, minggu, hariAwal }: Props) {
           <button type="button" className="btn" onClick={() => setFormBuka(true)}>Tambah slot</button>
         </div>
       ) : (
-        <div className="surface">
+        <div className="surface batas batas-tinggi">
           {duaHariIni.map((s) => {
             const ditutup = tutup.has(kunci(s.id));
             const h = hitungSlot(s.kuota, s.terisi, ditutup);

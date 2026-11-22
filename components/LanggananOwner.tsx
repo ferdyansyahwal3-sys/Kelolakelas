@@ -62,7 +62,7 @@ export function LanggananOwner({ data, plan, hariIni, tagihan }: Props) {
 
       <section className="grp">
         <h2 className="h2">Riwayat tagihan</h2>
-        <div className="surface">
+        <div className="surface batas">
           {tagihan.map((t) => (
             <div key={t.id} className="item">
               <div className="grow"><div className="name">{t.periode}</div><div className="meta">{rp(t.nominal)} · tempo {tglPendek(t.tempo)}</div></div>

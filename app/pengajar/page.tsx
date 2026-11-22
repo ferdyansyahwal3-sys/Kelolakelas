@@ -1,27 +1,19 @@
 import { PageHeader } from "@/components/PageHeader";
-import { PemberitahuanPanel } from "@/components/PemberitahuanPanel";
-import { HARI_INI, muridContoh, pemberitahuanContoh, pengajarContoh } from "@/lib/contoh";
-import { labelBayar } from "@/lib/murid";
+import { PelatihApp } from "@/components/PelatihApp";
+import { absensiAwalContoh, bagiHasilContoh, bagiNominalContoh, gajiDibayarContoh, HARI_INI, jadwalContoh, muridContoh, pembayaranContoh, pemberitahuanContoh, pengajarContoh, pesertaTetapContoh } from "@/lib/contoh";
+import { labelTanggal } from "@/lib/sesi";
 
 const SAYA = { id: "riska", nama: "Coach Riska" };
 
 export default function HalamanPelatih() {
-  const murid = muridContoh.filter((m) => m.aktif && m.pengajar === SAYA.nama);
+  const murid = muridContoh.map((m) => ({ id: m.id, nama: m.nama, kategori: m.kategori, sisaSesi: m.sisaSesi, totalSesi: m.totalSesi, berlakuSampai: m.berlakuSampai, aktif: m.aktif, bayar: m.bayar }));
+  const catatanAwal = Object.fromEntries(muridContoh.filter((m) => m.catatan.length > 0).map((m) => [m.id, m.catatan]));
   return (
-    <div className="shell">
+    <div className="shell has-nav">
       <main className="scroll" style={{ paddingTop: 20 }}>
-        <PageHeader title="Halaman pelatih" icon="coach" chip={SAYA.nama} />
-        <section className="grp">
-          <h2 className="h2">Pembayaran murid saya</h2>
-          <div className="surface">
-            {murid.length === 0 ? <div className="item"><span className="sub">Belum ada murid.</span></div> : murid.map((m) => {
-              const b = labelBayar(m.bayar);
-              return <div key={m.id} className="item"><div className="grow"><div className="name">{m.nama}</div><div className="meta">Sisa {m.sisaSesi} dari {m.totalSesi} sesi</div></div><span className={b.kelas}>{b.pendek}</span></div>;
-            })}
-          </div>
-          <p className="meta" style={{ margin: 0 }}>Bukti bayar diperiksa pemilik. Pelatih hanya bisa melihat statusnya.</p>
-        </section>
-        <PemberitahuanPanel awal={pemberitahuanContoh} pengajar={pengajarContoh} peran="pelatih" saya={SAYA} hariIni={HARI_INI} />
+        <PageHeader title="Jadwal saya" icon="coach" chip={`${SAYA.nama} · ${labelTanggal(HARI_INI)}`} />
+        <PelatihApp saya={SAYA} hariIni={HARI_INI} jadwal={jadwalContoh} pesertaTetap={pesertaTetapContoh} murid={murid} catatanAwal={catatanAwal} absensiAwal={absensiAwalContoh}
+          pemberitahuan={pemberitahuanContoh} pengajar={pengajarContoh} pembayaran={pembayaranContoh} persenAwal={bagiHasilContoh[SAYA.id] ?? 0} nominalAwal={bagiNominalContoh[SAYA.id] ?? 0} dibayarAwal={gajiDibayarContoh} />
       </main>
     </div>
   );

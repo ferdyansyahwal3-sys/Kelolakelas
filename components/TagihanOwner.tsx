@@ -74,7 +74,7 @@ export function TagihanOwnerList({ awal, hariIni, usaha }: { awal: TagihanOwner[
           <p className="sub" style={{ margin: 0, fontSize: 13 }}>{aktif === "dicek" ? "Bukti bayar dari murid akan muncul di sini." : "Tagihan baru dibuat otomatis saat pendaftaran di-ACC."}</p>
         </div>
       ) : (
-        <div className="surface">
+        <div className="surface batas batas-tinggi">
           {tampil.map((t) => {
             const terbuka = buka === t.id;
             const telat = terlambatHari(t, hariIni);

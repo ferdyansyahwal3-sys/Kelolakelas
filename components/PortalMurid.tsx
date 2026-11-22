@@ -18,12 +18,12 @@ const kelasSesi = { hadir: "st st-ok", izin: "st st-few", alpa: "st st-full" } a
 const namaSesi = { hadir: "Hadir", izin: "Izin", alpa: "Alpa" } as const;
 const tagihanLabel = { lunas: { t: "Lunas", k: "st st-ok" }, belum: { t: "Belum bayar", k: "st st-free" }, menunggu_verifikasi: { t: "Dicek pemilik", k: "st st-few" } } as const;
 
-export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, info }: { usaha: string; data: Data; sekarang: string; batasIzinJam: number; pengajarId: string; info: Pemberitahuan[] }) {
+export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, slotIds, info }: { usaha: string; data: Data; sekarang: string; batasIzinJam: number; pengajarId: string; slotIds: string[]; info: Pemberitahuan[] }) {
   const [izin, setIzin] = useState(false);
   const [kabar, setKabar] = useState(info);
   useEffect(() => {
-    try { const d = JSON.parse(localStorage.getItem(KUNCI_INFO) ?? "null") as Pemberitahuan[] | null; if (Array.isArray(d)) setKabar(untukMurid(d, pengajarId)); } catch {}
-  }, [pengajarId]);
+    try { const d = JSON.parse(localStorage.getItem(KUNCI_INFO) ?? "null") as Pemberitahuan[] | null; if (Array.isArray(d)) setKabar(untukMurid(d, pengajarId, slotIds)); } catch {}
+  }, [pengajarId, slotIds]);
   const k = ringkasKuota(data.sisa, data.total);
   const b = data.berikutnya;
   const boleh = b ? bisaAjukanIzin(b.mulai, sekarang, batasIzinJam) : false;
@@ -37,7 +37,7 @@ export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, i
         {kabar.length > 0 && (
           <section className="grp" aria-label="Info dari pelatih">
             <h2 className="h2">Info dari pelatih</h2>
-            <div className="surface">
+            <div className="surface batas">
               {kabar.slice(0, 5).map((k) => (
                 <div key={k.id} className="item" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><span className={k.jenis === "tidak_hadir" ? "st st-full" : k.jenis === "aturan" ? "st st-few" : "st st-ok"}>{labelInfo[k.jenis as JenisInfo]}</span><span className="meta">{tglPendek(k.tgl)} · {k.penulis}</span></div>
@@ -73,7 +73,7 @@ export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, i
 
         <section className="grp">
           <h2 className="h2">Pembayaran</h2>
-          <div className="surface">
+          <div className="surface batas">
             {data.tagihan.map((t) => (
               <div key={t.id} className="item"><div className="grow"><div className="name">{rp(t.nominal)}</div><div className="meta">Tempo {tglPendek(t.tempo)}</div></div><span className={tagihanLabel[t.status].k}>{tagihanLabel[t.status].t}</span></div>
             ))}
@@ -84,14 +84,14 @@ export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, i
         <section className="grp">
           <h2 className="h2">Riwayat kehadiran</h2>
           {data.riwayat.length === 0 ? <p className="sub" style={{ margin: 0, fontSize: 13 }}>Belum ada sesi.</p> : (
-            <div className="surface">{data.riwayat.map((r) => <div key={r.tgl} className="item"><span className="grow">{r.tgl}</span><span className={kelasSesi[r.status]}>{namaSesi[r.status]}</span></div>)}</div>
+            <div className="surface batas">{data.riwayat.map((r) => <div key={r.tgl} className="item"><span className="grow">{r.tgl}</span><span className={kelasSesi[r.status]}>{namaSesi[r.status]}</span></div>)}</div>
           )}
         </section>
 
         {data.catatan.length > 0 && (
           <section className="grp">
             <h2 className="h2">Catatan dari pelatih</h2>
-            <div className="surface">{data.catatan.map((c) => <div key={c.tgl} className="item" style={{ alignItems: "flex-start" }}><span className="meta" style={{ width: 46, paddingTop: 2 }}>{c.tgl}</span><span className="grow">{c.teks}</span></div>)}</div>
+            <div className="surface batas">{data.catatan.map((c) => <div key={c.tgl} className="item" style={{ alignItems: "flex-start" }}><span className="meta" style={{ width: 46, paddingTop: 2 }}>{c.tgl}</span><span className="grow">{c.teks}</span></div>)}</div>
           </section>
         )}
         <p className="meta" style={{ margin: 0, textAlign: "center" }}>Link ini pribadi. Jangan dibagikan ke orang lain.</p>

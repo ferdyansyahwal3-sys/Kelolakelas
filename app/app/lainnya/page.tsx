@@ -3,6 +3,7 @@ import { Icon } from "@/components/Icon";
 import { PageHeader } from "@/components/PageHeader";
 
 const menu = [
+  { href: "/app/sesi", nama: "Sesi dan absensi", ket: "Hadir, izin, alpa, sesi pengganti", icon: "check", siap: true },
   { href: "/app/pengaturan", nama: "Pengaturan", ket: "Profil, tema, rekening, aturan sesi", icon: "grid", siap: true },
   { href: "/app/pemberitahuan", nama: "Pemberitahuan", ket: "Info, pelatih tidak hadir, peraturan baru", icon: "bell", siap: true },
   { href: "/pengajar", nama: "Halaman pelatih", ket: "Pemberitahuan dan pembayaran murid", icon: "coach", siap: true },
