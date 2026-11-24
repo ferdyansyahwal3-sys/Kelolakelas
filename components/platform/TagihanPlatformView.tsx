@@ -1,4 +1,5 @@
 "use client";
+import { labelPlan } from "@/lib/paketLangganan";
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
@@ -73,7 +74,7 @@ export function TagihanPlatformView() {
                     <tr>
                       <td className="utama"><b>{t.orderId}</b><span className="meta" style={{ display: "block" }}>Terbit {tgl(t.terbit)}</span></td>
                       <td data-label="Usaha"><Link href={`/platform/usaha/${u.id}`} className="link">{u.nama}</Link></td>
-                      <td data-label="Paket">{t.plan === "pro" ? "Pro" : "Starter"} · {t.bulan === 12 ? "1 tahun" : `${t.bulan} bln`}{t.kodePromo && <span className="meta"> · {t.kodePromo}</span>}</td>
+                      <td data-label="Paket">{labelPlan(t.plan)} · {t.bulan === 12 ? "1 tahun" : `${t.bulan} bln`}{t.kodePromo && <span className="meta"> · {t.kodePromo}</span>}</td>
                       <td data-label="Nominal" className="num">{rp(t.nominal)}{t.nominal < t.hargaNormal && <span className="meta" style={{ display: "block" }}>normal {rp(t.hargaNormal)}</span>}</td>
                       <td data-label="Tempo">{tgl(t.tempo)}</td>
                       <td data-label="Status"><span className={kelasTagihan[t.status]}>{telat(t, p.hari) ? "Telat" : labelTagihan[t.status]}</span></td>

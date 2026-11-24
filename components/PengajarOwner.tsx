@@ -1,8 +1,9 @@
 "use client";
-import Link from "next/link";
+import { Tautan as Link } from "@/components/BasisApp";
 import { useState } from "react";
 import { Icon } from "./Icon";
 import { inisial } from "@/lib/format";
+import { labelPlan } from "@/lib/paketLangganan";
 import { BATAS_PENGAJAR, bisaUndang, jatahTerpakai, kodeUndangan, validasiUndangan, type PengajarOwner as Pengajar, type Plan } from "@/lib/pengajar";
 
 interface Ringkas { murid: number; slot: number }
@@ -46,11 +47,11 @@ export function PengajarOwnerList({ awal, plan, ringkas }: Props) {
     <>
       <div className="surface" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-          <span className="sub">Paket {plan === "pro" ? "Pro" : "Starter"}</span>
+          <span className="sub">Paket {labelPlan(plan)}</span>
           <b>{terpakai}{Number.isFinite(batas) ? ` / ${batas}` : ""} pengajar</b>
         </div>
         {Number.isFinite(batas) && <div className="bar" aria-hidden="true"><i style={{ width: `${Math.min(100, (terpakai / batas) * 100)}%` }} /></div>}
-        <span className="meta">{plan === "pro" ? "Pengajar tidak dibatasi." : "Starter untuk 1 pengajar. Upgrade ke Pro untuk menambah pelatih lain."}</span>
+        <span className="meta">{Number.isFinite(batas) ? `Paket ${labelPlan(plan)} untuk ${batas} pengajar. Naik paket untuk menambah pelatih lain.` : "Pengajar tidak dibatasi."}</span>
       </div>
 
       <div className="surface batas batas-tinggi">
@@ -110,7 +111,7 @@ export function PengajarOwnerList({ awal, plan, ringkas }: Props) {
       ) : boleh ? (
         <button type="button" className="btn" onClick={() => setFormBuka(true)}>Undang pengajar</button>
       ) : (
-        <div className="surface kartu-form"><p className="sub" style={{ margin: 0, fontSize: 13 }}>Paket Starter hanya untuk 1 pengajar. Upgrade ke Pro untuk mengundang pelatih lain.</p><button type="button" className="btn" disabled>Upgrade ke Pro (segera)</button></div>
+        <div className="surface kartu-form"><p className="sub" style={{ margin: 0, fontSize: 13 }}>Paket {labelPlan(plan)} hanya untuk {batas} pengajar. Naik paket untuk mengundang pelatih lain.</p><button type="button" className="btn" disabled>Naik paket (segera)</button></div>
       )}
       {toast && <div className="toast" role="status">{toast}</div>}
     </>

@@ -21,7 +21,9 @@ function gabung(daftar: string[]): string {
 }
 
 /** "Hampir penuh" = kelas berkuota lebih dari 1 yang tinggal satu tempat. Sesi tanpa murid tidak dihitung sebagai sesi hari ini. */
-export function ringkasanPagi(sesi: SesiHari[], k: KonteksPagi, istilah: IstilahRingkas): { judul: string; kartu: KartuPeriode[]; totalSesi: number; totalMurid: number; hampirPenuh: number } {
+export interface ItemPerhatian { id: string; teks: string; href: string }
+
+export function ringkasanPagi(sesi: SesiHari[], k: KonteksPagi, istilah: IstilahRingkas): { judul: string; ringkas: string; perhatian: ItemPerhatian[]; kartu: KartuPeriode[]; totalSesi: number; totalMurid: number; hampirPenuh: number } {
   const aktif = sesi.filter((s) => s.peserta.length > 0);
   const kartu: KartuPeriode[] = (["pagi", "siang", "sore"] as const).map((id) => {
     const d = aktif.filter((s) => periodeJam(s.slot.jam) === id).sort((a, b) => menit(a.slot.jam) - menit(b.slot.jam));
@@ -41,5 +43,12 @@ export function ringkasanPagi(sesi: SesiHari[], k: KonteksPagi, istilah: Istilah
   if (k.buktiPerluDicek > 0) perhatian.push(`${k.buktiPerluDicek} bukti bayar perlu dicek`);
   if (k.tagihanTelat > 0) perhatian.push(`${k.tagihanTelat} tagihan telat`);
   if (hampirPenuh > 0) perhatian.push(`${hampirPenuh} ${istilah.sesi} hampir penuh`);
-  return { judul: perhatian.length === 0 ? `${dasar} Semuanya beres.` : `${dasar} Perlu perhatian: ${gabung(perhatian)}.`, kartu, totalSesi, totalMurid, hampirPenuh };
+  // Versi singkat untuk layar: satu baris angka + chip pendek yang bisa diketuk (tiap chip ke halaman yang menyelesaikannya).
+  const chip: ItemPerhatian[] = [];
+  if (k.pendaftaranMenunggu > 0) chip.push({ id: "acc", teks: `${k.pendaftaranMenunggu} menunggu ACC`, href: "/app/pendaftaran" });
+  if (k.buktiPerluDicek > 0) chip.push({ id: "bukti", teks: `${k.buktiPerluDicek} bukti bayar`, href: "/app/tagihan" });
+  if (k.tagihanTelat > 0) chip.push({ id: "telat", teks: `${k.tagihanTelat} tagihan telat`, href: "/app/tagihan" });
+  if (hampirPenuh > 0) chip.push({ id: "penuh", teks: `${hampirPenuh} hampir penuh`, href: "/app/sesi" });
+  const ringkas = totalSesi === 0 ? `Tidak ada ${istilah.sesi} hari ini` : `${totalSesi} ${istilah.sesi} · ${totalMurid} ${istilah.murid} hari ini`;
+  return { judul: perhatian.length === 0 ? `${dasar} Semuanya beres.` : `${dasar} Perlu perhatian: ${gabung(perhatian)}.`, ringkas, perhatian: chip, kartu, totalSesi, totalMurid, hampirPenuh };
 }

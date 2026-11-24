@@ -1,4 +1,5 @@
 "use client";
+import { labelPlan } from "@/lib/paketLangganan";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
@@ -45,7 +46,7 @@ export function HasilBayarLangganan({ tagihan, hariIni }: { tagihan: TagihanLang
   }, [skenario, mulai]);
 
   const aktifSampai = masaAktifBaru(tagihan, hariIni);
-  const namaPlan = tagihan.plan === "pro" ? "Pro" : "Starter";
+  const namaPlan = labelPlan(tagihan.plan);
 
   return (
     <>

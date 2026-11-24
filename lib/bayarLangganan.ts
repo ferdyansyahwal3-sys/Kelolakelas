@@ -1,4 +1,5 @@
 import { perpanjangPeriode } from "./langganan";
+import type { PlanKey } from "./paketLangganan";
 
 export type HasilBayar = "berhasil" | "menunggu" | "gagal";
 
@@ -30,7 +31,7 @@ export const FORMAT_ORDER = /^KK-\d{6}-\d{4}$/;
 
 export interface TagihanLangganan {
   orderId: string;
-  plan: "starter" | "pro";
+  plan: PlanKey;
   bulan: number;
   nominal: number;
   /** Akhir periode sebelum tagihan ini dibayar (null = belum pernah berbayar). */

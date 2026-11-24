@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { Tautan as Link } from "@/components/BasisApp";
 import { useState } from "react";
 import { Icon } from "./Icon";
 import { inisial } from "@/lib/format";

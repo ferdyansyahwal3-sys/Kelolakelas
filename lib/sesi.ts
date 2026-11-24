@@ -87,6 +87,8 @@ export interface Konteks {
   murid: Record<string, MuridSesi>;
   /** Absen yang sudah terhitung di `sisaSesi` murid sebelum halaman ini dipakai. */
   awal: Absensi;
+  /** Sesi yang dipindah sekali ini (disetujui owner); dipakai saat mencari slot untuk sesi pengganti murid. */
+  pindah?: PindahJadwal[];
 }
 
 export interface PesertaSesi { muridId: string; pengganti: boolean; penggantiId?: string; kunci: string }
@@ -97,7 +99,12 @@ export interface SesiHari {
   /** Pelatih yang memegang sesi ini pada tanggal itu (bisa berbeda dari pemilik slot kalau diganti sekali). */
   pelatihId: string;
   diganti: boolean;
+  /** Bila diisi, ini sesi pindahan: tanggal asal slot ini sebelum dipindah (`slot.jam` sudah jam barunya). */
+  dipindahDari?: string;
 }
+
+/** Satu sesi dipindah ke tanggal/jam lain hanya untuk sekali itu. Minggu berikutnya slot kembali ke jadwal tetapnya. */
+export interface PindahJadwal { slotId: string; tanggalAsal: string; tanggalBaru: string; jamBaru: string }
 
 export const kunciSesi = (slotId: string, tanggal: string, muridId: string) => `${slotId}|${tanggal}|${muridId}`;
 
@@ -118,20 +125,44 @@ export function sesiPadaTanggal(
   pengganti: Pengganti[],
   tanggal: string,
   ganti: GantiPelatih[] = [],
+  pindah: PindahJadwal[] = [],
 ): SesiHari[] {
   const hari = nomorHari(tanggal);
-  return urutkan(jadwal.filter((s) => s.hari === hari)).map((slot) => ({
-    slot,
-    tanggal,
-    pelatihId: pelatihSesi(slot, tanggal, ganti),
-    diganti: pelatihSesi(slot, tanggal, ganti) !== slot.pengajarId,
-    peserta: [
-      ...(pesertaTetap[slot.id] ?? []).map((id) => ({ muridId: id, pengganti: false, kunci: kunciSesi(slot.id, tanggal, id) })),
-      ...pengganti
-        .filter((p) => p.slotId === slot.id && p.tanggal === tanggal)
-        .map((p) => ({ muridId: p.muridId, pengganti: true, penggantiId: p.id, kunci: kunciSesi(slot.id, tanggal, p.muridId) })),
-    ],
-  }));
+  const pergi = (slotId: string) => pindah.some((p) => p.slotId === slotId && p.tanggalAsal === tanggal);
+  const susun = (slot: SlotJadwal, dariTanggal?: string): SesiHari => {
+    const pelatihId = pelatihSesi(slot, dariTanggal ?? tanggal, ganti);
+    return {
+      slot,
+      tanggal,
+      pelatihId,
+      diganti: pelatihId !== slot.pengajarId,
+      ...(dariTanggal ? { dipindahDari: dariTanggal } : {}),
+      peserta: [
+        ...(pesertaTetap[slot.id] ?? []).map((id) => ({ muridId: id, pengganti: false, kunci: kunciSesi(slot.id, tanggal, id) })),
+        ...pengganti
+          .filter((p) => p.slotId === slot.id && p.tanggal === tanggal)
+          .map((p) => ({ muridId: p.muridId, pengganti: true, penggantiId: p.id, kunci: kunciSesi(slot.id, tanggal, p.muridId) })),
+      ],
+    };
+  };
+  const tetap = jadwal.filter((s) => s.hari === hari && !pergi(s.id)).map((s) => susun(s));
+  const masuk = pindah
+    .filter((p) => p.tanggalBaru === tanggal)
+    .flatMap((p) => {
+      const slot = jadwal.find((s) => s.id === p.slotId);
+      return slot ? [susun({ ...slot, hari, jam: p.jamBaru }, p.tanggalAsal)] : [];
+    });
+  return urutkan([...tetap.map((x) => x.slot), ...masuk.map((x) => x.slot)]).map((sl) => [...tetap, ...masuk].find((x) => x.slot === sl)!);
+}
+
+/** Sesi yang pada `tanggal` dipindah ke tempat lain (tidak muncul di `sesiPadaTanggal`, tapi pelatih dan owner perlu tahu ke mana perginya). */
+export function sesiDipindahKeluar(jadwal: SlotJadwal[], ganti: GantiPelatih[], pindah: PindahJadwal[], tanggal: string): { slot: SlotJadwal; pelatihId: string; ke: PindahJadwal }[] {
+  return pindah
+    .filter((p) => p.tanggalAsal === tanggal && p.tanggalBaru !== tanggal)
+    .flatMap((p) => {
+      const slot = jadwal.find((s) => s.id === p.slotId);
+      return slot ? [{ slot, pelatihId: pelatihSesi(slot, tanggal, ganti), ke: p }] : [];
+    });
 }
 
 // ---------- Ganti pelatih untuk satu jadwal saja ----------
@@ -284,7 +315,7 @@ export function opsiPengganti(
   for (let i = 1; i <= hariMaks; i++) {
     const tanggal = tambahHari(k.hariIni, i);
     if (tanggal > m.berlakuSampai) break;
-    const sesiHari = sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, tanggal);
+    const sesiHari = sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, tanggal, [], k.pindah);
     for (const s of sesiHari) {
       if (galatPengganti(k, kead, s, sesiHari, muridId)) continue;
       hasil.push({ slot: s.slot, tanggal, sisaTempat: hitungSlot(s.slot.kuota, terisiHariItu(s, kead.absensi)).sisa });
@@ -303,10 +334,10 @@ export function jadwalkanPengganti(
   if (kead.absensi[dariKunci] !== "izin") return { ok: false, galat: "Sesi pengganti hanya untuk sesi yang izin." };
   if (kead.pengganti.some((p) => p.dariKunci === dariKunci)) return { ok: false, galat: "Sesi ini sudah punya pengganti." };
   if (hakPengganti(k, kead, muridId) < 1) return { ok: false, galat: "Tidak ada hak sesi pengganti." };
-  const slot = jadwal.find((s) => s.id === slotId);
-  if (!slot || slot.hari !== nomorHari(tanggal)) return { ok: false, galat: "Slot tidak ada di tanggal itu." };
-  const sesiHari = sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, tanggal);
-  const tujuan = sesiHari.find((s) => s.slot.id === slotId)!;
+  const sesiHari = sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, tanggal, [], k.pindah);
+  const tujuan = sesiHari.find((s) => s.slot.id === slotId);
+  if (!tujuan) return { ok: false, galat: "Slot tidak ada di tanggal itu." };
+  const slot = tujuan.slot;
   const galat = galatPengganti(k, kead, tujuan, sesiHari, muridId);
   if (galat) return { ok: false, galat };
   const pengganti = [...kead.pengganti, { id: idBaru, slotId, tanggal, muridId, dariKunci }];

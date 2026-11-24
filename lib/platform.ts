@@ -1,10 +1,11 @@
-import { hitungAkses, perpanjangPeriode, selisih, HARGA, type Akses, type Fase } from "./langganan";
+import { hitungAkses, perpanjangPeriode, selisih, type Akses, type Fase } from "./langganan";
+import { HARGA, jenisDariPlan, labelPlan, type Jenis, type PlanKey } from "./paketLangganan";
 import { linkWa } from "./beranda";
 import { tambahHari } from "./sesi";
 
 // ---------- Model (mengikuti tabel subscriptions, subscription_invoices, platform_promo_codes, reminder_logs) ----------
 
-export type Plan = "starter" | "pro";
+export type Plan = PlanKey;
 export type StatusTagihan = "belum_bayar" | "lunas" | "kedaluwarsa" | "batal";
 export type MetodeBayar = "duitku" | "transfer_bank";
 
@@ -333,7 +334,7 @@ const tglPanjang = (iso: string) => new Date(iso).toLocaleDateString("id-ID", { 
 export function pesanPengingat(u: Usaha, t: TagihanPlatform, hari: string): string {
   const sisa = selisih(hari, t.tempo);
   const waktu = sisa > 0 ? `jatuh tempo ${sisa} hari lagi (${tglPanjang(t.tempo)})` : sisa === 0 ? "jatuh tempo hari ini" : `sudah lewat jatuh tempo ${-sisa} hari (${tglPanjang(t.tempo)})`;
-  return `Halo ${u.pemilik}, ini dari KelolaKelas. Tagihan langganan ${u.plan === "pro" ? "Pro" : "Starter"} ${t.bulan === 12 ? "1 tahun" : `${t.bulan} bulan`} untuk ${u.nama} sebesar ${rp(t.nominal)} ${waktu}. Pembayaran bisa dilakukan dari menu Langganan di aplikasi. Kalau butuh bantuan atau mau bayar lewat transfer, balas pesan ini ya.`;
+  return `Halo ${u.pemilik}, ini dari KelolaKelas. Tagihan langganan ${labelPlan(u.plan)} ${t.bulan === 12 ? "1 tahun" : `${t.bulan} bulan`} untuk ${u.nama} sebesar ${rp(t.nominal)} ${waktu}. Pembayaran bisa dilakukan dari menu Langganan di aplikasi. Kalau butuh bantuan atau mau bayar lewat transfer, balas pesan ini ya.`;
 }
 
 export const linkPengingatWa = (u: Usaha, t: TagihanPlatform, hari: string) => linkWa(u.noWa, pesanPengingat(u, t, hari));
@@ -364,7 +365,7 @@ export function validasiPromo(i: InputPromo, ada: Pick<PromoPlatform, "kode">[],
   if (!/^[A-Z0-9]{3,16}$/.test(kode)) g.kode = "Kode 3–16 huruf atau angka, tanpa spasi.";
   else if (ada.some((p) => p.kode === kode)) g.kode = "Kode ini sudah ada.";
   if (i.jenis === "persen" && (!Number.isInteger(i.nilai) || i.nilai < 1 || i.nilai > 100)) g.nilai = "Persen 1–100.";
-  if (i.jenis === "nominal" && (!Number.isInteger(i.nilai) || i.nilai < 1000 || i.nilai > HARGA.pro * PROMO_BULAN_MAKS)) g.nilai = `Nominal Rp1.000–${rp(HARGA.pro * PROMO_BULAN_MAKS)}.`;
+  if (i.jenis === "nominal" && (!Number.isInteger(i.nilai) || i.nilai < 1000 || i.nilai > HARGA.agensi_jaringan * PROMO_BULAN_MAKS)) g.nilai = `Nominal Rp1.000–${rp(HARGA.agensi_jaringan * PROMO_BULAN_MAKS)}.`;
   if (i.kuota !== null && (!Number.isInteger(i.kuota) || i.kuota < 1 || i.kuota > 100000)) g.kuota = "Kuota 1–100.000 atau kosongkan.";
   if (i.kedaluwarsa !== null && (Number.isNaN(Date.parse(i.kedaluwarsa)) || i.kedaluwarsa < hari)) g.kedaluwarsa = "Tanggal tidak boleh di masa lalu.";
   if (!Number.isInteger(i.berlakuBulan) || i.berlakuBulan < 1 || i.berlakuBulan > PROMO_BULAN_MAKS) g.berlakuBulan = `Berlaku 1–${PROMO_BULAN_MAKS} bulan.`;
@@ -404,19 +405,19 @@ export const CATATAN_USAHA_MAKS = 1000;
 
 // ---------- Komposisi paket (untuk diagram dashboard) ----------
 
-export interface KomposisiPaket { plan: Plan; usaha: number; mrr: number; persenMrr: number }
+export interface KomposisiPaket { jenis: Jenis; usaha: number; mrr: number; persenMrr: number }
 
 /** Usaha berbayar yang sehat (status otomatis aktif) per paket, beserta bagian MRR-nya. Jumlahnya selalu = MRR aktif di dashboard. */
 export function komposisiPaket(usaha: Usaha[], tagihan: TagihanPlatform[], hari: string): { paket: KomposisiPaket[]; totalMrr: number; trial: number } {
-  const per: Record<Plan, { usaha: number; mrr: number }> = { pro: { usaha: 0, mrr: 0 }, starter: { usaha: 0, mrr: 0 } };
+  const per: Record<Jenis, { usaha: number; mrr: number }> = { agensi: { usaha: 0, mrr: 0 }, guru_les: { usaha: 0, mrr: 0 } };
   for (const u of usaha) {
     if (faseOtomatis(u, hari) !== "aktif") continue;
     const t = tagihan.filter((x) => x.usahaId === u.id && x.status === "lunas" && x.dibayar).sort((a, b) => b.dibayar!.localeCompare(a.dibayar!))[0];
     if (!t) continue;
-    per[u.plan].usaha++;
-    per[u.plan].mrr += Math.round(t.nominal / t.bulan);
+    per[jenisDariPlan(u.plan)].usaha++;
+    per[jenisDariPlan(u.plan)].mrr += Math.round(t.nominal / t.bulan);
   }
-  const totalMrr = per.pro.mrr + per.starter.mrr;
-  const paket = (["pro", "starter"] as const).map((plan) => ({ plan, usaha: per[plan].usaha, mrr: per[plan].mrr, persenMrr: totalMrr === 0 ? 0 : Math.round((per[plan].mrr / totalMrr) * 100) }));
+  const totalMrr = per.agensi.mrr + per.guru_les.mrr;
+  const paket = (["agensi", "guru_les"] as const).map((jenis) => ({ jenis, usaha: per[jenis].usaha, mrr: per[jenis].mrr, persenMrr: totalMrr === 0 ? 0 : Math.round((per[jenis].mrr / totalMrr) * 100) }));
   return { paket, totalMrr, trial: usaha.filter((u) => faseOtomatis(u, hari) === "trial").length };
 }

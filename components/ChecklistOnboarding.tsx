@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { Tautan as Link } from "@/components/BasisApp";
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { hitungChecklist, type DataOnboarding } from "@/lib/onboarding";

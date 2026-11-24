@@ -4,13 +4,13 @@ import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { linkWa } from "@/lib/beranda";
 import { selisih } from "@/lib/langganan";
+import { PAKET, labelPlan } from "@/lib/paketLangganan";
 import type { Fase } from "@/lib/langganan";
 import { ALASAN_LIHAT_MIN, CATATAN_USAHA_MAKS, MODE_LIHAT_MENIT, NAMA_FASE, URUT_FASE, aksesDariFase, faseUsaha, linkPengingatWa, ringkasStatus, modeLihatAktif, telat, terakhirAktifLabel, tidakAktif } from "@/lib/platform";
 import { kelasFase, kelasTagihan, labelFase, labelTagihan, tgl, useRp, waktuAudit } from "./umum";
 import { FormAktivasi } from "./FormAktivasi";
 import { usePlatform } from "./PlatformProvider";
 
-const BATAS_STARTER = { murid: 30, pengajar: 1 };
 
 export function DetailUsahaPlatform({ id }: { id: string }) {
   const p = usePlatform();
@@ -44,7 +44,9 @@ export function DetailUsahaPlatform({ id }: { id: string }) {
   const sisa = selisih(p.hari, akhir);
   const info = (teks: string, galat = false) => setToast({ teks, galat });
   const waPemilik = linkWa(u.noWa, `Halo ${u.pemilik}, ini dari KelolaKelas.`);
-  const starter = u.plan === "starter";
+  const paket = PAKET[u.plan];
+  const batasMurid = paket.batas.murid;
+  const batasPelatih = paket.batas.pelatih;
 
   function mulaiLihat() {
     const h = p.mulaiLihat(id, alasan);
@@ -77,7 +79,7 @@ export function DetailUsahaPlatform({ id }: { id: string }) {
         <span className="plat-aksi">
           <span className={kelasFase[fase]}>{labelFase[fase]}</span>
           {st.manual && <span className="st st-few" title="Diatur manual oleh admin">Manual</span>}
-          <span className="st st-free">{starter ? "Starter" : "Pro"}</span>
+          <span className="st st-free">{labelPlan(u.plan)}</span>
           {tidakAktif(u, p.hari) && <span className="st st-few">Tidak aktif {terakhirAktifLabel(u.terakhirAktif, p.hari)}</span>}
           {waPemilik && <a href={waPemilik} target="_blank" rel="noopener noreferrer" className="btn btn-2 btn-sm"><Icon name="wa" />WA pemilik</a>}
         </span>
@@ -85,8 +87,8 @@ export function DetailUsahaPlatform({ id }: { id: string }) {
 
       <div className="plat-kpis">
         <div className="surface plat-kpi"><span className="meta">Berlaku sampai</span><span className="angka">{tgl(akhir)}</span><span className="meta">{sisa >= 0 ? `${sisa} hari lagi` : `lewat ${-sisa} hari`}{u.periodeBerakhir ? "" : " · masa trial"}</span></div>
-        <div className="surface plat-kpi"><span className="meta">Murid aktif</span><span className="angka">{u.muridAktif}<span className="meta"> / {u.murid}</span></span>{starter ? <div className="bar" aria-hidden="true"><i style={{ width: `${Math.min(100, (u.muridAktif / BATAS_STARTER.murid) * 100)}%` }} /></div> : null}<span className="meta">{starter ? `Batas Starter ${BATAS_STARTER.murid} murid` : "Pro: tanpa batas"}</span></div>
-        <div className="surface plat-kpi"><span className="meta">Pengajar</span><span className="angka">{u.pengajar}</span><span className="meta">{starter ? `Batas Starter ${BATAS_STARTER.pengajar}` : "Pro: tanpa batas"}</span></div>
+        <div className="surface plat-kpi"><span className="meta">Murid aktif</span><span className="angka">{u.muridAktif}<span className="meta"> / {u.murid}</span></span>{Number.isFinite(batasMurid) ? <div className="bar" aria-hidden="true"><i style={{ width: `${Math.min(100, (u.muridAktif / batasMurid) * 100)}%` }} /></div> : null}<span className="meta">{Number.isFinite(batasMurid) ? `Batas ${labelPlan(u.plan)} ${batasMurid.toLocaleString("id-ID")} murid` : "Murid tanpa batas"}</span></div>
+        <div className="surface plat-kpi"><span className="meta">Pengajar</span><span className="angka">{u.pengajar}</span><span className="meta">{Number.isFinite(batasPelatih) ? `Batas ${labelPlan(u.plan)} ${batasPelatih}` : "Pelatih tanpa batas"}</span></div>
         <div className="surface plat-kpi"><span className="meta">Sesi bulan ini</span><span className="angka">{u.sesiBulanIni}</span><span className="meta">Terakhir masuk {terakhirAktifLabel(u.terakhirAktif, p.hari).toLowerCase()} · daftar {tgl(u.dibuat)}</span></div>
       </div>
 
@@ -138,7 +140,7 @@ export function DetailUsahaPlatform({ id }: { id: string }) {
                   <Fragment key={t.id}>
                     <tr>
                       <td className="utama"><b>{t.orderId}</b>{t.kodePromo && <span className="meta" style={{ display: "block" }}>Promo {t.kodePromo}</span>}</td>
-                      <td data-label="Paket">{t.plan === "pro" ? "Pro" : "Starter"} · {t.bulan === 12 ? "1 tahun" : `${t.bulan} bln`}</td>
+                      <td data-label="Paket">{labelPlan(t.plan)} · {t.bulan === 12 ? "1 tahun" : `${t.bulan} bln`}</td>
                       <td data-label="Nominal" className="num">{rp(t.nominal)}</td>
                       <td data-label="Tempo">{tgl(t.tempo)}</td>
                       <td data-label="Status"><span className={kelasTagihan[t.status]}>{telat(t, p.hari) ? "Telat" : labelTagihan[t.status]}</span></td>

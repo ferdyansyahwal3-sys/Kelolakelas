@@ -1,4 +1,6 @@
-export type Plan = "starter" | "pro";
+import { BATAS_PENGAJAR as BATAS, type PlanKey } from "./paketLangganan";
+
+export type Plan = PlanKey;
 export type StatusPengajar = "aktif" | "menunggu" | "nonaktif";
 
 export interface PengajarOwner {
@@ -9,7 +11,7 @@ export interface PengajarOwner {
   status: StatusPengajar;
 }
 
-export const BATAS_PENGAJAR: Record<Plan, number> = { starter: 1, pro: Infinity };
+export const BATAS_PENGAJAR: Record<Plan, number> = BATAS;
 
 /** Pengajar yang menunggu undangan juga menghabiskan jatah paket, supaya tidak bisa diakali dengan banyak undangan. */
 export function jatahTerpakai(daftar: Pick<PengajarOwner, "status">[]): number {

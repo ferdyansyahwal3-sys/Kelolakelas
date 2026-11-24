@@ -1,6 +1,7 @@
-import Link from "next/link";
+import { HanyaAsli, Tautan as Link } from "@/components/BasisApp";
 import { Icon } from "@/components/Icon";
 import { PageHeader } from "@/components/PageHeader";
+import { TombolKeluar } from "@/components/TombolKeluar";
 
 const menu = [
   { href: "/app/sesi", nama: "Sesi dan absensi", ket: "Hadir, izin, alpa, sesi pengganti", icon: "check", siap: true },
@@ -12,7 +13,7 @@ const menu = [
   { href: "/app/promo", nama: "Promo dan referral", ket: "Kode diskon murid", icon: "tag", siap: true },
   { href: "/app/rekap", nama: "Rekap pemasukan", ket: "Per bulan, paket, dan bagi hasil", icon: "chart", siap: true },
   { href: "/app/pengajar", nama: "Pengajar", ket: "Undang dan atur bagi hasil", icon: "users", siap: true },
-  { href: "/app/langganan", nama: "Langganan", ket: "Paket KelolaKelas kamu", icon: "bill", siap: true },
+  { href: "/app/langganan", nama: "Langganan", ket: "Paket KelolaKelas kamu", icon: "bill", siap: true, hanyaAsli: true }, // tagihan akun sendiri: tidak ada di demo
 ];
 
 export default function Lainnya() {
@@ -28,13 +29,15 @@ export default function Lainnya() {
               {m.siap ? <Icon name="arrow" /> : <span className="st st-free">Segera</span>}
             </>
           );
+          const tautan = <Link key={m.nama} href={m.href} className="item" style={{ borderTop: 0 }}>{isi}</Link>;
           return m.siap ? (
-            <Link key={m.nama} href={m.href} className="item" style={{ borderTop: 0 }}>{isi}</Link>
+            "hanyaAsli" in m ? <HanyaAsli key={m.nama}>{tautan}</HanyaAsli> : tautan
           ) : (
             <div key={m.nama} className="item item-off" style={{ borderTop: 0 }} aria-disabled="true">{isi}</div>
           );
         })}
       </div>
+      <HanyaAsli><TombolKeluar /></HanyaAsli>
     </main>
   );
 }

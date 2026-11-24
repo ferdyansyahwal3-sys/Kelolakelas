@@ -1,11 +1,12 @@
-import { GRACE_HARI, HARGA, TANGGUH_HARI } from "./langganan";
+import { GRACE_HARI, TANGGUH_HARI } from "./langganan";
+import { JENIS, PAKET, TRIAL_HARI as TRIAL, rupiah } from "./paketLangganan";
 
 export interface BagianHukum { id: string; judul: string; isi: string[]; butir?: string[] }
 export interface DokumenHukum { judul: string; ringkas: string; diperbarui: string; bagian: BagianHukum[] }
 
 /** Tanggal naskah ini ditulis. Ganti saat isi diubah atau setelah ditinjau ahli hukum. */
-export const NASKAH_DIPERBARUI = "2026-11-22";
-export const TRIAL_HARI = 14;
+export const NASKAH_DIPERBARUI = "2026-11-23";
+export const TRIAL_HARI = TRIAL;
 const rp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
 
 export const privasi: DokumenHukum = {
@@ -138,8 +139,9 @@ export const syarat: DokumenHukum = {
       id: "trial", judul: "Masa coba dan paket",
       isi: [`Setiap usaha baru mendapat masa coba gratis ${TRIAL_HARI} hari tanpa kartu. Setelah itu kamu bisa memilih paket berbayar:`],
       butir: [
-        `Starter ${rp(HARGA.starter)} per bulan: 1 pengajar.`,
-        `Pro ${rp(HARGA.pro)} per bulan: pengajar tidak dibatasi dan fitur tambahan sesuai yang tercantum di halaman Harga.`,
+        `Guru Les (kamu mengajar sendiri, 1 pengajar): ${JENIS.guru_les.paket.map((k) => `${PAKET[k].nama} ${rupiah(PAKET[k].hargaNormal)}`).join(", ")} per bulan.`,
+        `Agensi/Club (banyak pelatih): ${JENIS.agensi.paket.map((k) => `${PAKET[k].nama} ${rupiah(PAKET[k].hargaNormal)}`).join(", ")} per bulan.`,
+        "Harga di atas adalah harga normal. Pada jendela waktu promo yang tertera di halaman Harga, harga promo berlaku untuk semua orang; di luar jendela itu berlaku harga normal. Batas murid, pelatih, dan fitur tiap paket tercantum di halaman Harga.",
         "Paket tahunan: bayar 10 bulan untuk 12 bulan.",
         "Harga dan isi paket bisa berubah. Perubahan tidak berlaku untuk periode yang sudah dibayar.",
       ],

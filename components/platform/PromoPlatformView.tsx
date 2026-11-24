@@ -29,7 +29,7 @@ export function PromoPlatformView() {
     setForm(KOSONG); setGalat({}); setFormBuka(false);
   }
   const set = <K extends keyof typeof KOSONG>(k: K, v: (typeof KOSONG)[K]) => { setForm({ ...form, [k]: v }); setGalat((g) => ({ ...g, [k === "berlakuBulan" ? "berlakuBulan" : k]: undefined })); };
-  const contohHarga = (jenis: "persen" | "nominal", n: number) => hargaSetelahPromo("pro", n > 0 ? { jenis, nilai: n } : null);
+  const contohHarga = (jenis: "persen" | "nominal", n: number) => hargaSetelahPromo("agensi_klub", n > 0 ? { jenis, nilai: n } : null);
 
   return (
     <>
@@ -55,7 +55,7 @@ export function PromoPlatformView() {
             <label className="field"><span className="label l2">Berlaku sampai (opsional)</span><input type="date" min={p.hari} value={form.kedaluwarsa} onChange={(e) => set("kedaluwarsa", e.target.value)} />{galat.kedaluwarsa && <span className="galat" role="alert">{galat.kedaluwarsa}</span>}</label>
             <label className="field"><span className="label l2">Potongan berlaku (bulan)</span><input value={form.berlakuBulan} inputMode="numeric" onChange={(e) => set("berlakuBulan", e.target.value.replace(/\D/g, ""))} />{galat.berlakuBulan && <span className="galat" role="alert">{galat.berlakuBulan}</span>}</label>
           </div>
-          {nilaiNum > 0 && <p className="meta" style={{ margin: 0 }}>Contoh paket Pro {rp(HARGA.pro)}: bayar {rp(contohHarga(form.jenis, nilaiNum).bayar)} per bulan selama {form.berlakuBulan || 1} bulan pertama.</p>}
+          {nilaiNum > 0 && <p className="meta" style={{ margin: 0 }}>Contoh paket Agensi Klub {rp(HARGA.agensi_klub)}: bayar {rp(contohHarga(form.jenis, nilaiNum).bayar)} per bulan selama {form.berlakuBulan || 1} bulan pertama.</p>}
           <div className="aksi"><button type="submit" className="btn btn-sm">Simpan promo</button><button type="button" className="btn btn-2 btn-sm" onClick={() => { setFormBuka(false); setGalat({}); }}>Batal</button></div>
         </form>
       )}

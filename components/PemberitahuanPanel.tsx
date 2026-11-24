@@ -1,17 +1,28 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
-import { labelInfo, slotDiizinkan, targetDiizinkan, validasiPemberitahuan, type JenisInfo, type Pemberitahuan, type Peran } from "@/lib/pemberitahuan";
+import { belumDibaca, kabarUntuk, labelInfo, labelKabar, slotDiizinkan, tandaiDibaca, tandaiSemuaDibaca, targetDiizinkan, validasiPemberitahuan, type JenisInfo, type JenisKabar, type KabarPelatih, type Pemberitahuan, type Peran } from "@/lib/pemberitahuan";
 import { tglPendek } from "@/lib/format";
 
 export const KUNCI_INFO = "kk-pemberitahuan";
+export const KUNCI_KABAR = "kk-kabar-pelatih";
 interface SlotInfo { id: string; pengajarId: string; hari: number; jam: string; nama: string }
-interface Props { awal: Pemberitahuan[]; pengajar: { id: string; nama: string }[]; peran: Peran; saya: { id: string | null; nama: string }; hariIni: string; jadwal?: SlotInfo[] }
+interface Props { awal: Pemberitahuan[]; pengajar: { id: string; nama: string }[]; peran: Peran; saya: { id: string | null; nama: string }; hariIni: string; jadwal?: SlotInfo[]; onKabarUbah?: (belumDibaca: number) => void }
 const HARI = ["", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 const kelas: Record<JenisInfo, string> = { umum: "st st-ok", tidak_hadir: "st st-full", aturan: "st st-few" };
+const kelasKabar: Record<JenisKabar, string> = { ganti_disetujui: "st st-ok", ganti_masuk: "st st-few", ganti_ditolak: "st st-full", tukar_disetujui: "st st-ok", tukar_ditolak: "st st-full", tukar_dibatalkan: "st st-few", ganti_langsung: "st st-few" };
 
-export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwal = [] }: Props) {
+/** Dibaca dari localStorage; bentuk yang rusak diabaikan. */
+export function bacaKabar(): KabarPelatih[] {
+  try {
+    const d = JSON.parse(localStorage.getItem(KUNCI_KABAR) ?? "null") as KabarPelatih[] | null;
+    return Array.isArray(d) ? d.filter((k) => k && typeof k.id === "string" && typeof k.untukPelatihId === "string" && typeof k.judul === "string") : [];
+  } catch { return []; }
+}
+
+export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwal = [], onKabarUbah }: Props) {
   const [daftar, setDaftar] = useState(awal);
+  const [kabar, setKabar] = useState<KabarPelatih[]>([]);
   const [form, setForm] = useState({ jenis: "umum" as JenisInfo, judul: "", isi: "", target: peran === "pelatih" ? (saya.id ?? "") : "semua", slotId: "" });
   const slotBisa = jadwal.filter((x) => slotDiizinkan(peran, saya.id, x.pengajarId)).sort((a, b) => a.hari - b.hari || a.jam.localeCompare(b.jam));
   const labelSlot = (x: SlotInfo) => `${HARI[x.hari]} ${x.jam} · ${x.nama}${peran === "owner" ? ` · ${pengajar.find((p) => p.id === x.pengajarId)?.nama ?? ""}` : ""}`;
@@ -21,7 +32,16 @@ export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwa
 
   useEffect(() => {
     try { const d = JSON.parse(localStorage.getItem(KUNCI_INFO) ?? "null") as Pemberitahuan[] | null; if (Array.isArray(d)) setDaftar(d); } catch {}
+    setKabar(bacaKabar());
   }, []);
+
+  const kabarSaya = peran === "pelatih" && saya.id ? kabarUntuk(kabar, saya.id) : [];
+  const baru = peran === "pelatih" && saya.id ? belumDibaca(kabar, saya.id) : 0;
+  function ubahKabar(d: KabarPelatih[]) {
+    setKabar(d);
+    try { localStorage.setItem(KUNCI_KABAR, JSON.stringify(d)); } catch {}
+    if (saya.id) onKabarUbah?.(belumDibaca(d, saya.id));
+  }
 
   const simpanLokal = (d: Pemberitahuan[]) => { try { localStorage.setItem(KUNCI_INFO, JSON.stringify(d)); } catch {} };
   const info = (t: string) => { setToast(t); setTimeout(() => setToast(""), 3500); };
@@ -48,6 +68,25 @@ export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwa
 
   return (
     <>
+      {kabarSaya.length > 0 && (
+        <section className="grp" aria-label="Kabar untukmu">
+          <div className="sec-head">
+            <h2 className="h2">Kabar untukmu{baru > 0 ? ` · ${baru} baru` : ""}</h2>
+            {baru > 1 && saya.id && <button type="button" className="btn btn-2 btn-sm" onClick={() => ubahKabar(tandaiSemuaDibaca(kabar, saya.id!))}>Tandai semua dibaca</button>}
+          </div>
+          <div className="surface batas">
+            {kabarSaya.map((k) => (
+              <div key={k.id} className={k.dibaca ? "item kabar" : "item kabar kabar-baru"} style={{ alignItems: "flex-start", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><span className={kelasKabar[k.jenis]}>{labelKabar[k.jenis]}</span><span className="meta">{tglPendek(k.tgl)} · dari pemilik</span></div>
+                <div className="name" style={{ whiteSpace: "normal" }}>{k.judul}</div>
+                <div className="sub" style={{ fontSize: 13 }}>{k.isi}</div>
+                {!k.dibaca && saya.id && <button type="button" className="btn btn-2 btn-sm" onClick={() => ubahKabar(tandaiDibaca(kabar, k.id, saya.id!))}><Icon name="check" />Tandai dibaca</button>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="grp">
         <h2 className="h2">Tulis pemberitahuan</h2>
         <form className="surface kartu-form" onSubmit={(e) => { e.preventDefault(); kirim(); }} noValidate>

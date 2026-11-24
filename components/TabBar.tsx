@@ -1,6 +1,8 @@
 "use client";
 import { usePathname } from "next/navigation";
 import { NavMelayang } from "./NavMelayang";
+import { useBasis } from "./BasisApp";
+import { ubahHref } from "@/lib/basis";
 
 const ITEM = [
   { id: "beranda", href: "/app", label: "Beranda", icon: "home", cocok: [] as string[] },
@@ -10,8 +12,11 @@ const ITEM = [
   { id: "lainnya", href: "/app/lainnya", label: "Lainnya", icon: "grid", cocok: ["/app/lainnya"] },
 ];
 
+/** Menu bawah owner. Alamat `/app/...` diganti awalan demo lewat konteks (lihat lib/basis.ts), jadi satu komponen untuk panel asli dan demo. */
 export function TabBar() {
   const path = usePathname();
-  const aktif = path === "/app" ? "beranda" : ITEM.find((t) => t.cocok.some((c) => path.startsWith(c)))?.id ?? "lainnya";
-  return <NavMelayang items={ITEM} aktifId={aktif} label="Menu utama" />;
+  const basis = useBasis();
+  const item = ITEM.map((t) => ({ ...t, href: ubahHref(t.href, basis), cocok: t.cocok.map((c) => ubahHref(c, basis)) }));
+  const aktif = path === basis ? "beranda" : item.find((t) => t.cocok.some((c) => path.startsWith(c)))?.id ?? "lainnya";
+  return <NavMelayang items={item} aktifId={aktif} label="Menu utama" />;
 }

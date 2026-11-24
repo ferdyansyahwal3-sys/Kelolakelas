@@ -1,4 +1,5 @@
 "use client";
+import { JENIS } from "@/lib/paketLangganan";
 import Link from "next/link";
 import { useMemo } from "react";
 import { Icon } from "@/components/Icon";
@@ -133,9 +134,9 @@ export function DashboardPlatform() {
             <DonutPaket paket={kp.paket} />
             <ul className="donut-legenda">
               {kp.paket.map((k) => (
-                <li key={k.plan}>
-                  <span className={k.plan === "pro" ? "donut-titik donut-titik-pro" : "donut-titik donut-titik-starter"} aria-hidden="true" />
-                  <b>{k.plan === "pro" ? "Pro" : "Starter"}</b>
+                <li key={k.jenis}>
+                  <span className={k.jenis === "agensi" ? "donut-titik donut-titik-pro" : "donut-titik donut-titik-starter"} aria-hidden="true" />
+                  <b>{JENIS[k.jenis].singkat}</b>
                   <span className="donut-persen">{k.persenMrr}%</span>
                   <span className="meta">{k.usaha} usaha · {rp(k.mrr)}</span>
                 </li>
@@ -178,19 +179,19 @@ export function DashboardPlatform() {
 
 
 /** Donut komposisi paket menurut bagian MRR. Sengaja tanpa teks di gambar; ringkasan angka ada di label aksesibilitas. */
-function DonutPaket({ paket }: { paket: { plan: "pro" | "starter"; usaha: number; mrr: number; persenMrr: number }[] }) {
+function DonutPaket({ paket }: { paket: { jenis: "agensi" | "guru_les"; usaha: number; mrr: number; persenMrr: number }[] }) {
   const R = 40;
   const K = 2 * Math.PI * R;
   const total = paket.reduce((n, p) => n + p.mrr, 0);
-  const KELAS = { pro: "donut-pro", starter: "donut-starter" } as const;
+  const KELAS = { agensi: "donut-pro", guru_les: "donut-starter" } as const;
   let awal = 0;
-  const label = total === 0 ? "Belum ada langganan berbayar" : `Komposisi paket menurut MRR: ${paket.map((p) => `${p.plan === "pro" ? "Pro" : "Starter"} ${p.persenMrr}%`).join(", ")}`;
+  const label = total === 0 ? "Belum ada langganan berbayar" : `Komposisi paket menurut MRR: ${paket.map((p) => `${JENIS[p.jenis].singkat} ${p.persenMrr}%`).join(", ")}`;
   return (
     <svg className="donut" viewBox="0 0 100 100" role="img" aria-label={label}>
       <circle className="donut-dasar" cx="50" cy="50" r={R} fill="none" strokeWidth="14" />
       {total > 0 && paket.filter((p) => p.mrr > 0).map((p) => {
         const panjang = (p.mrr / total) * K;
-        const el = <circle key={p.plan} className={KELAS[p.plan]} cx="50" cy="50" r={R} fill="none" strokeWidth="14" strokeDasharray={`${Math.max(panjang - 1.2, 0)} ${K}`} strokeDashoffset={-awal} />;
+        const el = <circle key={p.jenis} className={KELAS[p.jenis]} cx="50" cy="50" r={R} fill="none" strokeWidth="14" strokeDasharray={`${Math.max(panjang - 1.2, 0)} ${K}`} strokeDashoffset={-awal} />;
         awal += panjang;
         return el;
       })}

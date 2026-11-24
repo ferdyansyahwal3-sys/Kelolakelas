@@ -231,7 +231,7 @@ export const pemakaianPromoContoh: { id: string; kode: string; nama: string; tgl
 
 import type { PengajarOwner, Plan } from "./pengajar";
 
-export const PLAN_CONTOH: Plan = "pro";
+export const PLAN_CONTOH: Plan = "agensi_klub";
 
 export const pengajarOwnerContoh: PengajarOwner[] = [
   { id: "ilham", nama: "Coach Ilham", email: "ilham@contoh.id", pemilik: true, status: "aktif" },
@@ -275,6 +275,6 @@ export const pemberitahuanContoh: Pemberitahuan[] = [
 
 // Tagihan langganan KelolaKelas milik usaha contoh (dibayar owner lewat gateway). Di database: tabel subscription_invoices.
 export const tagihanLanggananContoh = [
-  { orderId: "KK-202611-0001", plan: "pro" as const, bulan: 1, nominal: 99000, akhirLama: "2026-12-05" as string | null },
-  { orderId: "KK-202611-0002", plan: "pro" as const, bulan: 12, nominal: 990000, akhirLama: "2026-12-05" as string | null },
+  { orderId: "KK-202611-0001", plan: "agensi_klub" as const, bulan: 1, nominal: 399000, akhirLama: "2026-12-05" as string | null },
+  { orderId: "KK-202611-0002", plan: "agensi_klub" as const, bulan: 12, nominal: 3990000, akhirLama: "2026-12-05" as string | null },
 ];

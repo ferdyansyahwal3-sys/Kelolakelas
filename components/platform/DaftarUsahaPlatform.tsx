@@ -1,4 +1,5 @@
 "use client";
+import { labelPlan } from "@/lib/paketLangganan";
 import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
@@ -62,7 +63,7 @@ export function DaftarUsahaPlatform({ statusAwal }: { statusAwal?: string }) {
                   <tr key={u.id}>
                     <td className="utama"><Link href={`/platform/usaha/${u.id}`} className="name" style={{ display: "block", whiteSpace: "normal" }}>{u.nama}</Link><span className="meta">{u.pemilik} · {u.kategori} · {u.kota}</span></td>
                     <td data-label="Status"><span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}><Link href={`/platform/usaha/${u.id}#status`} className={kelasFase[f]} title="Ubah status">{labelFase[f]}</Link>{manualBerlaku(u, hari) && <span className="st st-few" title={manualBerlaku(u, hari)!.alasan}>Manual</span>}{lama && <span className="st st-free" title={`Terakhir masuk ${terakhirAktifLabel(u.terakhirAktif, hari)}`}>Tidak aktif</span>}</span></td>
-                    <td data-label="Paket">{u.plan === "pro" ? "Pro" : "Starter"}</td>
+                    <td data-label="Paket">{labelPlan(u.plan)}</td>
                     <td data-label="Murid aktif" className="num">{u.muridAktif}<span className="meta"> / {u.murid}</span></td>
                     <td data-label="Terakhir aktif">{terakhirAktifLabel(u.terakhirAktif, hari)}</td>
                     <td data-label="Berlaku sampai">{tgl(u.periodeBerakhir ?? u.trialBerakhir)}</td>

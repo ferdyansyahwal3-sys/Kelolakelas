@@ -1,16 +1,19 @@
 "use client";
-import Link from "next/link";
+import { Tautan as Link } from "@/components/BasisApp";
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "./Icon";
 import { inisial } from "@/lib/format";
 import type { SlotJadwal } from "@/lib/jadwal";
 import { selisih } from "@/lib/langganan";
-import { setujuiMinta, tolakMinta, type PermintaanGanti } from "@/lib/pelatih";
+import { gabungById, type KabarPelatih, type Pemberitahuan } from "@/lib/pemberitahuan";
+import { batalkanPindahan, kabarBatalPindah, kabarGantiLangsung, kabarKeputusan, kabarKeputusanTukar, KUNCI_PINDAH, pemohonTukar, setujuiMinta, setujuiTukar, tolakMinta, tolakTukar, type HasilKabarKeputusan, type KonteksTukar, type PengajuanTukar, type PermintaanGanti } from "@/lib/pelatih";
+import { KUNCI_INFO, KUNCI_KABAR, bacaKabar } from "./PemberitahuanPanel";
+import { KUNCI_TUKAR } from "./JadwalPelatih";
 import { labelBayar } from "@/lib/murid";
 import {
   batalkanGanti, batalkanPengganti, gantiPelatih, hakPengganti, hariPekan, jadwalkanPengganti, labelPekan, labelTanggal, opsiPengganti, ringkasHari,
-  sesiPadaTanggal, sisaSesiKini, tambahHari, tandai,
-  type Absensi, type GantiPelatih, type Keadaan, type Konteks, type MuridSesi, type StatusAbsen,
+  pelatihSesi, sesiDipindahKeluar, sesiPadaTanggal, sisaSesiKini, tambahHari, tandai,
+  type Absensi, type GantiPelatih, type Keadaan, type Konteks, type MuridSesi, type PindahJadwal, type StatusAbsen,
 } from "@/lib/sesi";
 
 interface Pengajar { id: string; nama: string }
@@ -22,6 +25,8 @@ interface Props {
   hariIni: string;
   absensiAwal: Absensi;
   istilah: { murid: string; sesi: string };
+  /** Isi awal pemberitahuan murid (sebelum ada yang tersimpan di perangkat ini), supaya info baru ditambahkan ke daftar yang sama dengan halaman Pemberitahuan. */
+  pemberitahuanAwal?: Pemberitahuan[];
 }
 
 const PILIHAN: { status: StatusAbsen; label: string }[] = [
@@ -34,7 +39,7 @@ const KUNCI_GANTI = "kk-ganti-pelatih";
 const KUNCI_MINTA = "kk-minta-ganti";
 const GULIR_MULAI = 2; // lebih dari ini, daftar murid digulir di dalam kartu
 
-export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, absensiAwal, istilah }: Props) {
+export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, absensiAwal, istilah, pemberitahuanAwal = [] }: Props) {
   const [tanggal, setTanggal] = useState(hariIni);
   const [pid, setPid] = useState<string>("semua");
   const [kead, setKead] = useState<Keadaan>({ absensi: absensiAwal, pengganti: [] });
@@ -43,12 +48,18 @@ export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, abse
   const [gantiList, setGantiList] = useState<GantiPelatih[]>([]);
   const [bukaGanti, setBukaGanti] = useState<string | null>(null);
   const [minta, setMinta] = useState<PermintaanGanti[]>([]);
+  const [tukar, setTukar] = useState<PengajuanTukar[]>([]);
+  const [pindah, setPindah] = useState<PindahJadwal[]>([]);
   const [toast, setToast] = useState<{ teks: string; galat: boolean } | null>(null);
 
   useEffect(() => {
     try {
       const q = JSON.parse(localStorage.getItem(KUNCI_MINTA) ?? "null") as PermintaanGanti[] | null;
       if (Array.isArray(q)) setMinta(q);
+      const t = JSON.parse(localStorage.getItem(KUNCI_TUKAR) ?? "null") as PengajuanTukar[] | null;
+      if (Array.isArray(t)) setTukar(t);
+      const pj = JSON.parse(localStorage.getItem(KUNCI_PINDAH) ?? "null") as PindahJadwal[] | null;
+      if (Array.isArray(pj)) setPindah(pj.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggalAsal === "string" && typeof x.tanggalBaru === "string" && typeof x.jamBaru === "string"));
       const g = JSON.parse(localStorage.getItem(KUNCI_GANTI) ?? "null") as GantiPelatih[] | null;
       if (Array.isArray(g)) setGantiList(g.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggal === "string" && typeof x.pelatihId === "string"));
       const d = JSON.parse(localStorage.getItem("kk-pengaturan") ?? "null") as { aturan?: { sesiPengganti?: unknown } } | null;
@@ -63,11 +74,11 @@ export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, abse
   }, [toast]);
 
   const muridMap = useMemo(() => Object.fromEntries(murid.map((m) => [m.id, m])), [murid]);
-  const k: Konteks = useMemo(() => ({ hariIni, aturanPengganti, murid: muridMap, awal: absensiAwal }), [hariIni, aturanPengganti, muridMap, absensiAwal]);
+  const k: Konteks = useMemo(() => ({ hariIni, aturanPengganti, murid: muridMap, awal: absensiAwal, pindah }), [hariIni, aturanPengganti, muridMap, absensiAwal, pindah]);
   const namaPengajar = (id: string) => pengajar.find((p) => p.id === id)?.nama ?? "";
 
   const pekan = hariPekan(tanggal);
-  const sesiHari = sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, tanggal, gantiList).filter((s) => pid === "semua" || s.pelatihId === pid);
+  const sesiHari = sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, tanggal, gantiList, pindah).filter((s) => pid === "semua" || s.pelatihId === pid);
   const ringkas = ringkasHari(sesiHari, kead.absensi);
   const sudahLewat = tanggal <= hariIni;
 
@@ -95,24 +106,81 @@ export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, abse
     try { localStorage.setItem(KUNCI_MINTA, JSON.stringify(q)); } catch {}
   }
 
+  /** Menulis kabar pelatih + info murid hasil keputusan. Id dari id permintaan, jadi tidak pernah ganda. */
+  function simpanKabar({ kabar, info }: HasilKabarKeputusan, slotId: string): string {
+    try {
+      if (kabar.length > 0) localStorage.setItem(KUNCI_KABAR, JSON.stringify(gabungById<KabarPelatih>(bacaKabar(), kabar)));
+      if (info.length > 0) {
+        const simpan = JSON.parse(localStorage.getItem(KUNCI_INFO) ?? "null") as Pemberitahuan[] | null;
+        localStorage.setItem(KUNCI_INFO, JSON.stringify(gabungById(Array.isArray(simpan) ? simpan : pemberitahuanAwal, info)));
+      }
+    } catch {}
+    const nMurid = info.length > 0 ? (pesertaTetap[slotId] ?? []).length : 0;
+    const siapa = kabar.length > 1 ? "Kedua pelatih" : "Pelatih";
+    return `${siapa}${nMurid > 0 ? ` dan ${nMurid} ${istilah.murid}` : ""} diberi tahu.`;
+  }
+
+  const kirimKabar = (permintaan: PermintaanGanti, setuju: boolean) => simpanKabar(kabarKeputusan(permintaan, setuju, { hariIni, jadwal, pelatih: pengajar, pesertaTetap }), permintaan.slotId);
+
   function putuskan(id: string, setuju: boolean) {
+    const permintaan = minta.find((x) => x.id === id);
     if (setuju) {
       const h = setujuiMinta({ hariIni, jadwal, ganti: gantiList, pelatih: pengajar, permintaan: minta }, id);
       if (!h.ok) { setToast({ teks: h.galat, galat: true }); return; }
-      simpanGanti(h.ganti); simpanMinta(h.permintaan); setToast({ teks: `Disetujui. ${h.pesan}`, galat: false });
+      simpanGanti(h.ganti); simpanMinta(h.permintaan);
+      setToast({ teks: `Disetujui. ${h.pesan} ${permintaan ? kirimKabar(permintaan, true) : ""}`.trim(), galat: false });
     } else {
       const h = tolakMinta(minta, id, hariIni);
       if (!h.ok) { setToast({ teks: h.galat, galat: true }); return; }
-      simpanMinta(h.permintaan); setToast({ teks: "Permintaan ditolak, pelatih tetap memegang sesinya.", galat: false });
+      simpanMinta(h.permintaan);
+      setToast({ teks: `Permintaan ditolak, pelatih tetap memegang sesinya. ${permintaan ? kirimKabar(permintaan, false) : ""}`.trim(), galat: false });
     }
   }
 
   const menunggu = minta.filter((m) => m.status === "menunggu").sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
+  function simpanPindah(p: PindahJadwal[]) {
+    setPindah(p);
+    try { localStorage.setItem(KUNCI_PINDAH, JSON.stringify(p)); } catch {}
+  }
+  function simpanTukar(t: PengajuanTukar[]) {
+    setTukar(t);
+    try { localStorage.setItem(KUNCI_TUKAR, JSON.stringify(t)); } catch {}
+  }
+
+  const muridRingkas = useMemo(() => Object.fromEntries(murid.map((m) => [m.id, { nama: m.nama, berlakuSampai: m.berlakuSampai, aktif: m.aktif }])), [murid]);
+  const kTukar: KonteksTukar = { hariIni, jadwal, pelatih: pengajar, pesertaTetap, ganti: gantiList, pindah, pengajuan: tukar, permintaan: minta, murid: muridRingkas, absensi: kead.absensi, pengganti: kead.pengganti };
+  const tukarMenunggu = tukar.filter((t) => t.status === "menunggu").sort((a, b) => a.tanggalAsal.localeCompare(b.tanggalAsal));
+
+  function putuskanTukar(id: string, setuju: boolean) {
+    const p = tukar.find((x) => x.id === id);
+    if (setuju) {
+      const h = setujuiTukar(kTukar, id);
+      if (!h.ok) { setToast({ teks: h.galat, galat: true }); return; }
+      simpanPindah(h.pindah); simpanTukar(h.pengajuan);
+      setToast({ teks: `Disetujui. ${h.pesan} ${p ? simpanKabar(kabarKeputusanTukar(p, true, { hariIni, jadwal, ganti: gantiList, pesertaTetap }), p.slotId) : ""}`.trim(), galat: false });
+    } else {
+      const h = tolakTukar(tukar, id, hariIni);
+      if (!h.ok) { setToast({ teks: h.galat, galat: true }); return; }
+      simpanTukar(h.pengajuan);
+      setToast({ teks: `Pengajuan ditolak, jadwal tetap. ${p ? simpanKabar(kabarKeputusanTukar(p, false, { hariIni, jadwal, ganti: gantiList, pesertaTetap }), p.slotId) : ""}`.trim(), galat: false });
+    }
+  }
+
   function pilihGanti(slotId: string, pelatihBaruId: string) {
     const h = gantiPelatih(jadwal, gantiList, pengajar, hariIni, slotId, tanggal, pelatihBaruId);
     if (!h.ok) { setToast({ teks: h.galat, galat: true }); return; }
-    simpanGanti(h.ganti); setBukaGanti(null); setToast({ teks: h.pesan, galat: false });
+    const sebelum = pelatihSesi(jadwal.find((x) => x.id === slotId)!, tanggal, gantiList);
+    simpanGanti(h.ganti); setBukaGanti(null);
+    const kabar = simpanKabar(kabarGantiLangsung(sebelum, pelatihBaruId, slotId, tanggal, `gl-${Date.now()}`, { hariIni, jadwal, pelatih: pengajar, pesertaTetap }), slotId);
+    setToast({ teks: `${h.pesan} ${kabar}`, galat: false });
+  }
+
+  function batalkanPindahSesi(slotId: string, tanggalAsal: string) {
+    const h = batalkanPindahan({ hariIni, jadwal, pindah, pengajuan: tukar, absensi: kead.absensi }, slotId, tanggalAsal);
+    if (!h.ok) { setToast({ teks: h.galat, galat: true }); return; }
+    simpanPindah(h.pindah); simpanTukar(h.pengajuan);
+    setToast({ teks: `${h.pesan} ${simpanKabar(kabarBatalPindah(h.dibatalkan, `bp-${Date.now()}`, { hariIni, jadwal, ganti: gantiList, pesertaTetap }), slotId)}`, galat: false });
   }
 
   const ringkasTeks = (() => {
@@ -133,7 +201,7 @@ export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, abse
 
       <div className="days d7" role="tablist" aria-label="Hari">
         {pekan.map((h) => {
-          const ada = sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, h.tgl, gantiList).some((s) => pid === "semua" || s.pelatihId === pid);
+          const ada = sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, h.tgl, gantiList, pindah).some((s) => pid === "semua" || s.pelatihId === pid);
           return (
             <button key={h.tgl} type="button" role="tab" aria-selected={tanggal === h.tgl} aria-label={`${labelTanggal(h.tgl)}${h.tgl === hariIni ? ", hari ini" : ""}`}
               className={tanggal === h.tgl ? "hari on" : "hari"} onClick={() => { setTanggal(h.tgl); setBukaPengganti(null); }}>
@@ -171,6 +239,29 @@ export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, abse
         </section>
       )}
 
+      {tukarMenunggu.length > 0 && (
+        <section className="panel hero-usaha" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }} aria-label="Permintaan tukar jadwal">
+          <h2 className="h2" style={{ color: "var(--panel-text)", fontSize: 15 }}>Permintaan tukar jadwal · {tukarMenunggu.length}</h2>
+          {tukarMenunggu.map((t) => {
+            const slot = jadwal.find((x) => x.id === t.slotId);
+            const cek = setujuiTukar(kTukar, t.id);
+            const nMurid = (pesertaTetap[t.slotId] ?? []).length;
+            return (
+              <div key={t.id} style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 10, borderTop: "1px solid var(--panel-border)" }}>
+                <span><b>{namaPengajar(pemohonTukar(t, kTukar))}</b> minta memindahkan <b>{labelTanggal(t.tanggalAsal)} · {slot?.jam} {slot?.nama}</b> ke <b>{labelTanggal(t.tanggalBaru)} · {t.jamBaru}</b>.</span>
+                <span className="meta">Alasan: {t.alasan}</span>
+                <span className="meta">Hanya sekali ini. {nMurid > 0 ? `${nMurid} ${istilah.murid} akan diberi tahu bila disetujui.` : `Belum ada ${istilah.murid} tetap di sesi ini.`}</span>
+                {!cek.ok && <span className="meta" role="status" style={{ color: "var(--panel-text)", fontWeight: 600 }}>Belum bisa disetujui: {cek.galat}</span>}
+                <div className="aksi">
+                  <button type="button" className="btn btn-sm" disabled={!cek.ok} onClick={() => putuskanTukar(t.id, true)}>Setujui</button>
+                  <button type="button" className="btn btn-2 btn-sm" onClick={() => putuskanTukar(t.id, false)}>Tolak</button>
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      )}
+
       <div className="sec-head" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
         <h2 className="h2" style={{ fontSize: 14 }}>{labelTanggal(tanggal)}{tanggal === hariIni ? " · hari ini" : ""}</h2>
         <span className="meta">{ringkasTeks}</span>
@@ -194,20 +285,25 @@ export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, abse
                 <span className="time">{s.slot.jam}</span>
                 <span className="grow">
                   <span className="name" style={{ display: "block" }}>{s.slot.nama}</span>
-                  <span className="meta">{s.slot.durasi} mnt{s.slot.lokasi ? ` · ${s.slot.lokasi}` : ""} · {namaPengajar(s.pelatihId)}{s.diganti ? <b style={{ color: "var(--accent-text)" }}> · ganti sekali ini</b> : null}</span>
+                  <span className="meta">{s.slot.durasi} mnt{s.slot.lokasi ? ` · ${s.slot.lokasi}` : ""} · {namaPengajar(s.pelatihId)}{s.diganti ? <b style={{ color: "var(--accent-text)" }}> · ganti sekali ini</b> : null}{s.dipindahDari ? <b style={{ color: "var(--accent-text)" }}> · pindahan dari {labelTanggal(s.dipindahDari)} {jadwal.find((x) => x.id === s.slot.id)?.jam}</b> : null}</span>
                 </span>
                 {selesai ? <span className="st st-ok">Selesai</span>
                   : sudahLewat && belum > 0 ? <span className="st st-few">{belum} belum</span>
                   : <span className="st st-free">{terisi}/{s.slot.kuota}</span>}
               </div>
 
-              {pengajar.length > 1 && tanggal >= hariIni && (
+              {s.dipindahDari && s.dipindahDari >= hariIni && (
                 <div className="sesi-aksi">
-                  <button type="button" className="btn btn-2 btn-sm" aria-expanded={bukaGanti === s.slot.id} onClick={() => setBukaGanti(bukaGanti === s.slot.id ? null : s.slot.id)}>Ganti pelatih (sekali ini)</button>
-                  {s.diganti && <button type="button" className="btn btn-2 btn-sm" onClick={() => { simpanGanti(batalkanGanti(gantiList, s.slot.id, tanggal)); setToast({ teks: `Sesi ${s.slot.jam} dikembalikan ke ${namaPengajar(s.slot.pengajarId)}.`, galat: false }); }}>Kembalikan ke {namaPengajar(s.slot.pengajarId)}</button>}
+                  <button type="button" className="btn btn-2 btn-sm" onClick={() => batalkanPindahSesi(s.slot.id, s.dipindahDari!)}>Kembalikan ke {labelTanggal(s.dipindahDari)} {jadwal.find((x) => x.id === s.slot.id)?.jam}</button>
                 </div>
               )}
-              {bukaGanti === s.slot.id && (
+              {pengajar.length > 1 && tanggal >= hariIni && !s.dipindahDari && (
+                <div className="sesi-aksi">
+                  <button type="button" className="btn btn-2 btn-sm" aria-expanded={bukaGanti === s.slot.id} onClick={() => setBukaGanti(bukaGanti === s.slot.id ? null : s.slot.id)}>Ganti pelatih (sekali ini)</button>
+                  {s.diganti && <button type="button" className="btn btn-2 btn-sm" onClick={() => { const dari = s.pelatihId; simpanGanti(batalkanGanti(gantiList, s.slot.id, tanggal)); const kabar = simpanKabar(kabarGantiLangsung(dari, s.slot.pengajarId, s.slot.id, tanggal, `gl-${Date.now()}`, { hariIni, jadwal, pelatih: pengajar, pesertaTetap }), s.slot.id); setToast({ teks: `Sesi ${s.slot.jam} dikembalikan ke ${namaPengajar(s.slot.pengajarId)}. ${kabar}`, galat: false }); }}>Kembalikan ke {namaPengajar(s.slot.pengajarId)}</button>}
+                </div>
+              )}
+              {bukaGanti === s.slot.id && !s.dipindahDari && (
                 <div className="opsi-pengganti" style={{ margin: "0 12px 12px" }}>
                   <span className="meta">Hanya untuk {labelTanggal(tanggal)} · {s.slot.jam}. Minggu berikutnya kembali ke {namaPengajar(s.slot.pengajarId)}.</span>
                   {pengajar.filter((x) => x.id !== s.pelatihId).map((x) => (
@@ -309,6 +405,15 @@ export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, abse
           );
         })
       )}
+
+      {(() => {
+        const keluar = sesiDipindahKeluar(jadwal, gantiList, pindah, tanggal).filter((x) => pid === "semua" || x.pelatihId === pid);
+        return keluar.length > 0 ? (
+          <p className="meta" style={{ margin: 0 }}>
+            Dipindah ke tanggal lain sekali ini: {keluar.map((x) => `${x.slot.jam} ${x.slot.nama} → ${labelTanggal(x.ke.tanggalBaru)} ${x.ke.jamBaru}`).join(", ")}.
+          </p>
+        ) : null;
+      })()}
 
       <p className="meta" style={{ margin: 0 }}>
         Hadir dan alpa memotong sisa sesi. Izin tidak memotong{aturanPengganti ? " dan memberi hak 1 sesi pengganti" : ", tapi aturan usaha ini tanpa sesi pengganti jadi izin tetap terhitung"}. Masa berlaku paket diatur per paket di menu Paket dan harga. Ketuk tanda yang sama sekali lagi untuk membatalkan.

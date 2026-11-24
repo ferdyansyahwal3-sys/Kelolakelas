@@ -1,4 +1,5 @@
 "use client";
+import { labelPlan } from "@/lib/paketLangganan";
 import { useState } from "react";
 import { aktivasiManual, type TagihanPlatform, type Usaha } from "@/lib/platform";
 import { tgl, useRp } from "./umum";
@@ -39,7 +40,7 @@ export function FormAktivasi({ tagihan, usaha, onSelesai, onBatal }: { tagihan: 
         <input value={f.alasan} placeholder="Contoh: owner kirim bukti transfer lewat WA" onChange={(e) => ubah("alasan", e.target.value)} />
         {galat.alasan && <span className="galat" role="alert">{galat.alasan}</span>}</label>
       {galat.umum && <span className="galat lebar" role="alert">{galat.umum}</span>}
-      {pratinjau && <p className="lebar" style={{ margin: 0 }}><b>{usaha.nama}</b> akan aktif sampai <b>{tgl(pratinjau)}</b> (paket {tagihan.plan === "pro" ? "Pro" : "Starter"}, {tagihan.bulan} bulan). Terima {rp(tagihan.nominal)} lewat transfer, tagihan ditandai lunas. Ini tidak bisa dibatalkan dari sini.</p>}
+      {pratinjau && <p className="lebar" style={{ margin: 0 }}><b>{usaha.nama}</b> akan aktif sampai <b>{tgl(pratinjau)}</b> (paket {labelPlan(tagihan.plan)}, {tagihan.bulan} bulan). Terima {rp(tagihan.nominal)} lewat transfer, tagihan ditandai lunas. Ini tidak bisa dibatalkan dari sini.</p>}
       <div className="aksi lebar">
         {pratinjau ? <button type="submit" className="btn btn-sm">Ya, aktifkan sekarang</button> : <button type="submit" className="btn btn-sm">Lanjut, cek dulu</button>}
         <button type="button" className="btn btn-2 btn-sm" onClick={onBatal}>Batal</button>

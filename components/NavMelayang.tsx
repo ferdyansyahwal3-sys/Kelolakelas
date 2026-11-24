@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 
-export interface ItemNav { id: string; label: string; icon: string; href?: string }
+export interface ItemNav { id: string; label: string; icon: string; href?: string; /** Titik kecil penanda ada yang baru (mis. kabar belum dibaca). */ titik?: boolean }
 interface Props { items: ItemNav[]; aktifId: string; onPilih?: (id: string) => void; label: string }
 
 /**
@@ -32,12 +32,12 @@ export function NavMelayang({ items, aktifId, onPilih, label }: Props) {
     <nav className="nav-mel" data-kecil={kecil ? "ya" : "tidak"} aria-label={label} style={{ "--i": idx, "--n": items.length } as React.CSSProperties}>
       <span className="nav-lampu" aria-hidden="true"><i className="nav-bar" /><i className="nav-sorot" /></span>
       {items.map((it) => {
-        const isi = <Icon name={it.icon} />;
+        const isi = <><Icon name={it.icon} />{it.titik && <i className="nav-titik" aria-hidden="true" />}</>;
         const aktif = it.id === aktifId;
         return it.href ? (
-          <Link key={it.id} href={it.href} className="nav-item" aria-current={aktif ? "page" : undefined} aria-label={it.label} title={it.label}>{isi}</Link>
+          <Link key={it.id} href={it.href} className="nav-item" aria-current={aktif ? "page" : undefined} aria-label={it.titik ? `${it.label}, ada yang baru` : it.label} title={it.label}>{isi}</Link>
         ) : (
-          <button key={it.id} type="button" className="nav-item" aria-current={aktif ? "page" : undefined} aria-label={it.label} title={it.label} onClick={() => onPilih?.(it.id)}>{isi}</button>
+          <button key={it.id} type="button" className="nav-item" aria-current={aktif ? "page" : undefined} aria-label={it.titik ? `${it.label}, ada yang baru` : it.label} title={it.label} onClick={() => onPilih?.(it.id)}>{isi}</button>
         );
       })}
     </nav>

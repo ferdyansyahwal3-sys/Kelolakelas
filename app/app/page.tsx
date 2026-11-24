@@ -6,7 +6,7 @@ import { ChecklistOnboarding } from "@/components/ChecklistOnboarding";
 import { HARI_INI, jadwalContoh, muridContoh, paketOwnerContoh, pesertaTetapContoh, rekeningContoh, ringkasanContoh, tagihanContoh, tenantContoh } from "@/lib/contoh";
 import { ringkasanPagi } from "@/lib/ringkasan";
 import { sesiPadaTanggal } from "@/lib/sesi";
-import Link from "next/link";
+import { Tautan as Link } from "@/components/BasisApp";
 
 export default function DashboardOwner() {
   const { pemasukanBulanIni, pendaftaranMenunggu } = ringkasanContoh;
@@ -40,7 +40,12 @@ export default function DashboardOwner() {
           <h2 className="h2">Ringkasan pagi</h2>
           <Link href="/app/sesi" className="link" style={{ color: "var(--head-text-2)" }}>Absen</Link>
         </div>
-        <p className="ringkasan-judul">{ringkas.judul}</p>
+        <p className="ringkasan-judul">{ringkas.ringkas}</p>
+        {ringkas.perhatian.length > 0 ? (
+          <div className="perhatian" role="list" aria-label="Perlu perhatian">
+            {ringkas.perhatian.map((p) => <Link key={p.id} href={p.href} className="chip-perhatian" role="listitem">{p.teks}</Link>)}
+          </div>
+        ) : <p className="meta" style={{ margin: 0, color: "var(--head-text-2)" }}>Tidak ada yang perlu perhatian.</p>}
         <div className="glasscards">
           {ringkas.kartu.map((h) => (
             <div key={h.id} className={h.sesi === 0 ? "gcard empty" : "gcard"}>
@@ -48,7 +53,6 @@ export default function DashboardOwner() {
               <div>
                 <div className="v">{h.sesi === 0 ? "Kosong" : `${h.sesi} ${istilah.sesi}`}</div>
                 {h.sesi > 0 && <div className="m">{h.rentang} · {h.murid} {istilah.murid}</div>}
-                {h.hampirPenuh > 0 && <div className="m">{h.hampirPenuh} hampir penuh</div>}
               </div>
             </div>
           ))}

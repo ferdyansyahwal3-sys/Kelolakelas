@@ -22,8 +22,8 @@ export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, s
   const [izin, setIzin] = useState(false);
   const [kabar, setKabar] = useState(info);
   useEffect(() => {
-    try { const d = JSON.parse(localStorage.getItem(KUNCI_INFO) ?? "null") as Pemberitahuan[] | null; if (Array.isArray(d)) setKabar(untukMurid(d, pengajarId, slotIds)); } catch {}
-  }, [pengajarId, slotIds]);
+    try { const d = JSON.parse(localStorage.getItem(KUNCI_INFO) ?? "null") as Pemberitahuan[] | null; if (Array.isArray(d)) setKabar(untukMurid(d, pengajarId, slotIds, sekarang.slice(0, 10))); } catch {}
+  }, [pengajarId, slotIds, sekarang]);
   const k = ringkasKuota(data.sisa, data.total);
   const b = data.berikutnya;
   const boleh = b ? bisaAjukanIzin(b.mulai, sekarang, batasIzinJam) : false;

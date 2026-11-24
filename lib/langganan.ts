@@ -56,9 +56,6 @@ export function perpanjangPeriode(akhirLama: string | null, sekarang: string, bu
   return tambahBulan(mulai, bulan);
 }
 
-export const HARGA: Record<"starter" | "pro", number> = { starter: 49_000, pro: 99_000 };
+// Harga dan paket: sumber kebenarannya `paketLangganan.ts` (dua jenis x tiga paket). HARGA = harga normal per bulan.
+export { HARGA } from "./paketLangganan";
 
-/** Tahunan: bayar 10 bulan untuk 12. */
-export function hargaPeriode(plan: "starter" | "pro", periode: "bulanan" | "tahunan"): { bulan: number; total: number } {
-  return periode === "bulanan" ? { bulan: 1, total: HARGA[plan] } : { bulan: 12, total: HARGA[plan] * 10 };
-}

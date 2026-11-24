@@ -4,10 +4,10 @@ import { Icon } from "./Icon";
 import { inisial, tglPendek } from "@/lib/format";
 import type { SlotJadwal } from "@/lib/jadwal";
 import { labelBayar } from "@/lib/murid";
-import { ajukanGanti, ALASAN_MAKS, batalkanMinta, CATATAN_MAKS, validasiCatatan, validasiTukar, type GalatMinta, type GalatTukar, type PengajuanTukar, type PermintaanGanti } from "@/lib/pelatih";
+import { ajukanGanti, ALASAN_MAKS, batalkanMinta, CATATAN_MAKS, KUNCI_PINDAH, validasiCatatan, validasiTukar, type GalatMinta, type GalatTukar, type PengajuanTukar, type PermintaanGanti } from "@/lib/pelatih";
 import {
-  hakPengganti, labelPekan, labelTanggal, hariPekan, ringkasHari, sesiPadaTanggal, sisaSesiKini, tambahHari,
-  tandai, tandaiSemuaHadir, type Absensi, type GantiPelatih, type Keadaan, type Konteks, type MuridSesi, type StatusAbsen,
+  hakPengganti, labelPekan, labelTanggal, hariPekan, ringkasHari, sesiDipindahKeluar, sesiPadaTanggal, sisaSesiKini, tambahHari,
+  tandai, tandaiSemuaHadir, type Absensi, type GantiPelatih, type Keadaan, type Konteks, type MuridSesi, type PindahJadwal, type StatusAbsen,
 } from "@/lib/sesi";
 
 export const KUNCI_CATATAN = "kk-catatan-pelatih";
@@ -33,7 +33,7 @@ const PILIHAN: { status: StatusAbsen; label: string }[] = [
   { status: "izin", label: "Izin" },
   { status: "alpa", label: "Alpa" },
 ];
-const STATUS_TUKAR = { menunggu: "Menunggu persetujuan pemilik", disetujui: "Disetujui", ditolak: "Ditolak" } as const;
+const STATUS_TUKAR = { menunggu: "Menunggu persetujuan pemilik", disetujui: "Disetujui", ditolak: "Ditolak", dibatalkan: "Pindah dibatalkan pemilik" } as const;
 
 export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, hariIni, absensiAwal, pengajar }: Props) {
   const [mode, setMode] = useState<"hari" | "minggu">("hari");
@@ -47,6 +47,7 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
   const [formMinta, setFormMinta] = useState({ keId: "", alasan: "" });
   const [galatMinta, setGalatMinta] = useState<GalatMinta>({});
   const [gantiList, setGantiList] = useState<GantiPelatih[]>([]);
+  const [pindah, setPindah] = useState<PindahJadwal[]>([]);
   const [bukaCatatan, setBukaCatatan] = useState<string | null>(null);
   const [teksCatatan, setTeksCatatan] = useState("");
   const [galatCatatan, setGalatCatatan] = useState("");
@@ -67,6 +68,8 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
       if (Array.isArray(q)) setMinta(q);
       const t = JSON.parse(localStorage.getItem(KUNCI_TUKAR) ?? "null") as PengajuanTukar[] | null;
       if (Array.isArray(t)) setPengajuan(t);
+      const pj = JSON.parse(localStorage.getItem(KUNCI_PINDAH) ?? "null") as PindahJadwal[] | null;
+      if (Array.isArray(pj)) setPindah(pj.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggalAsal === "string" && typeof x.tanggalBaru === "string" && typeof x.jamBaru === "string"));
     } catch {}
   }, []);
 
@@ -80,8 +83,8 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
   const k: Konteks = useMemo(() => ({ hariIni, aturanPengganti, murid: muridMap, awal: absensiAwal }), [hariIni, aturanPengganti, muridMap, absensiAwal]);
   const jadwalSaya = useMemo(() => jadwal.filter((s) => s.pengajarId === saya.id), [jadwal, saya.id]);
 
-  const sesiDi = (tgl: string) => sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, tgl, gantiList).filter((s) => s.pelatihId === saya.id);
-  const serahanDi = (tgl: string) => sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, tgl, gantiList).filter((s) => s.slot.pengajarId === saya.id && s.pelatihId !== saya.id);
+  const sesiDi = (tgl: string) => sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, tgl, gantiList, pindah).filter((s) => s.pelatihId === saya.id);
+  const serahanDi = (tgl: string) => sesiPadaTanggal(jadwal, pesertaTetap, kead.pengganti, tgl, gantiList, pindah).filter((s) => s.slot.pengajarId === saya.id && s.pelatihId !== saya.id);
   const namaPengajar = (id: string) => pengajar.find((x) => x.id === id)?.nama ?? "";
   const sesiHari = sesiDi(tanggal);
   const ringkas = ringkasHari(sesiHari, kead.absensi);
@@ -120,7 +123,7 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
   function kirimTukar(s: SlotJadwal, tgl: string) {
     const h = validasiTukar({ slotId: s.id, tanggalAsal: tgl, ...formTukar }, hariIni, jadwalSaya, pengajuan);
     if (!h.ok) { setGalatTukar(h.galat); if (h.galat.umum) info(h.galat.umum, true); return; }
-    const baru = [...pengajuan, { ...h.pengajuan, id: `tk-${Date.now()}`, status: "menunggu" as const }];
+    const baru = [...pengajuan, { ...h.pengajuan, id: `tk-${Date.now()}`, status: "menunggu" as const, pelatihId: saya.id }];
     setPengajuan(baru); simpanLokal(KUNCI_TUKAR, baru);
     setBukaTukar(null); setGalatTukar({});
     info("Pengajuan tukar jadwal terkirim ke pemilik.");
@@ -221,10 +224,11 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
             </div>
           ) : sesiHari.map((s) => {
             const kunciTukar = `${s.slot.id}|${tanggal}`;
-            const tukar = pengajuan.find((p) => p.slotId === s.slot.id && p.tanggalAsal === tanggal && p.status !== "ditolak");
+            const tukar = pengajuan.find((p) => p.slotId === s.slot.id && p.tanggalAsal === tanggal && (p.status === "menunggu" || p.status === "disetujui"));
+            const tukarDitolak = !tukar ? pengajuan.find((p) => p.slotId === s.slot.id && p.tanggalAsal === tanggal && (p.status === "ditolak" || p.status === "dibatalkan")) : undefined;
             const belum = s.peserta.filter((p) => !kead.absensi[p.kunci]).length;
             const selesai = s.peserta.length > 0 && belum === 0;
-            const bisaTukar = tanggal >= hariIni;
+            const bisaTukar = tanggal >= hariIni && !s.dipindahDari;
             const kunciMinta = `${s.slot.id}|${tanggal}`;
             const mintaIni = minta.filter((m) => m.slotId === s.slot.id && m.tanggal === tanggal && m.dariId === saya.id && m.status !== "disetujui").sort((a, b) => b.id.localeCompare(a.id))[0];
             const mintaMenunggu = mintaIni?.status === "menunggu" ? mintaIni : undefined;
@@ -234,7 +238,7 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
                   <span className="time">{s.slot.jam}</span>
                   <span className="grow">
                     <span className="name" style={{ display: "block" }}>{s.slot.nama}</span>
-                    <span className="meta">{s.slot.durasi} mnt{s.slot.lokasi ? ` · ${s.slot.lokasi}` : ""}{s.diganti ? <b style={{ color: "var(--accent-text)" }}> · menggantikan {namaPengajar(s.slot.pengajarId)}</b> : null}</span>
+                    <span className="meta">{s.slot.durasi} mnt{s.slot.lokasi ? ` · ${s.slot.lokasi}` : ""}{s.diganti ? <b style={{ color: "var(--accent-text)" }}> · menggantikan {namaPengajar(s.slot.pengajarId)}</b> : null}{s.dipindahDari ? <b style={{ color: "var(--accent-text)" }}> · pindahan dari {labelTanggal(s.dipindahDari)} {jadwal.find((x) => x.id === s.slot.id)?.jam}</b> : null}</span>
                   </span>
                   {selesai ? <span className="st st-ok">Selesai</span> : sudahLewat && belum > 0 ? <span className="st st-few">{belum} belum</span> : <span className="st st-free">{s.peserta.length}/{s.slot.kuota}</span>}
                 </div>
@@ -269,6 +273,12 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
                       {galatMinta.alasan && <span className="galat" role="alert">{galatMinta.alasan}</span>}</label>
                     <div className="aksi"><button type="submit" className="btn">Kirim permintaan</button><button type="button" className="btn btn-2" onClick={() => setBukaMinta(null)}>Batal</button></div>
                   </form>
+                )}
+
+                {tukarDitolak && (
+                  <div className="pengganti-info" style={{ padding: "0 16px 12px" }}>
+                    <span className="meta">Pindah ke {labelTanggal(tukarDitolak.tanggalBaru)} · {tukarDitolak.jamBaru}<br />{tukarDitolak.status === "dibatalkan" ? "Pemilik membatalkan pemindahan, jadwal kembali seperti semula" : "Ditolak pemilik, jadwal tetap seperti semula"}</span>
+                  </div>
                 )}
 
                 {tukar && (
@@ -367,6 +377,12 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
               </section>
             );
           })}
+
+          {sesiDipindahKeluar(jadwal, gantiList, pindah, tanggal).filter((x) => x.pelatihId === saya.id).length > 0 && (
+            <p className="meta" style={{ margin: 0 }}>
+              Dipindah ke tanggal lain sekali ini: {sesiDipindahKeluar(jadwal, gantiList, pindah, tanggal).filter((x) => x.pelatihId === saya.id).map((x) => `${x.slot.jam} ${x.slot.nama} → ${labelTanggal(x.ke.tanggalBaru)} ${x.ke.jamBaru}`).join(", ")}.
+            </p>
+          )}
 
           {serahanDi(tanggal).length > 0 && (
             <p className="meta" style={{ margin: 0 }}>

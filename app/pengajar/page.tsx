@@ -1,5 +1,7 @@
+import { HanyaAsli } from "@/components/BasisApp";
 import { PageHeader } from "@/components/PageHeader";
 import { PelatihApp } from "@/components/PelatihApp";
+import { TombolKeluar } from "@/components/TombolKeluar";
 import { absensiAwalContoh, bagiHasilContoh, bagiNominalContoh, gajiDibayarContoh, HARI_INI, jadwalContoh, muridContoh, pembayaranContoh, pemberitahuanContoh, pengajarContoh, pesertaTetapContoh } from "@/lib/contoh";
 import { labelTanggal } from "@/lib/sesi";
 
@@ -14,6 +16,7 @@ export default function HalamanPelatih() {
         <PageHeader title="Jadwal saya" icon="coach" chip={`${SAYA.nama} · ${labelTanggal(HARI_INI)}`} />
         <PelatihApp saya={SAYA} hariIni={HARI_INI} jadwal={jadwalContoh} pesertaTetap={pesertaTetapContoh} murid={murid} catatanAwal={catatanAwal} absensiAwal={absensiAwalContoh}
           pemberitahuan={pemberitahuanContoh} pengajar={pengajarContoh} pembayaran={pembayaranContoh} persenAwal={bagiHasilContoh[SAYA.id] ?? 0} nominalAwal={bagiNominalContoh[SAYA.id] ?? 0} dibayarAwal={gajiDibayarContoh} />
+        <HanyaAsli><TombolKeluar /></HanyaAsli>
       </main>
     </div>
   );

@@ -12,7 +12,7 @@ export default function Langganan() {
   return (
     <main className="scroll" style={{ paddingTop: 20 }}>
       <PageHeader title="Langganan" back="/app/lainnya" />
-      <LanggananOwner data={{ trialBerakhir: null, periodeBerakhir: "2026-12-05", graceSampai: null }} plan={PLAN_CONTOH} hariIni={HARI_INI} tagihan={tagihan} />
+      <LanggananOwner data={{ trialBerakhir: null, periodeBerakhir: "2026-12-05", graceSampai: null }} plan={PLAN_CONTOH} hariIni={HARI_INI} tagihan={tagihan} sekarangMs={Date.now()} />
     </main>
   );
 }
