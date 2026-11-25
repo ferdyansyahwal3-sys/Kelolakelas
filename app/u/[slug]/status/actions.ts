@@ -1,17 +1,17 @@
 "use server";
-import { pendaftaranContoh } from "@/lib/contoh";
-import { bacaPencarian, cariPendaftaran, namaSamar, type StatusDaftar } from "@/lib/status";
+import { bacaPencarian, namaSamar, type StatusDaftar } from "@/lib/status";
+import { cariPendaftaranPublik } from "@/lib/supabase/publikData";
 
 export type HasilStatus =
   | { ok: true; nama: string; slot: string; status: StatusDaftar }
   | { ok: false; pesan: string };
 
-// Pencarian dilakukan di server: browser tidak pernah menerima daftar pendaftar, hanya satu hasil dengan nama disamarkan.
-// Saat database ada, tambahkan pembatasan jumlah percobaan per alamat IP.
-export async function cariStatus(teks: string): Promise<HasilStatus> {
-  const q = bacaPencarian(teks);
+// Pencarian dilakukan di server dan HANYA di usaha `slug`: browser tidak pernah menerima daftar pendaftar, hanya satu hasil dengan nama disamarkan.
+// Belum ada pembatasan percobaan per alamat IP (lihat _state.md).
+export async function cariStatus(slug: string, teks: string): Promise<HasilStatus> {
+  const q = bacaPencarian(String(teks ?? "").slice(0, 40));
   if (q.jenis === "salah") return { ok: false, pesan: "Isi kode pendaftaran (6 karakter) atau nomor WhatsApp yang dipakai mendaftar." };
-  const d = cariPendaftaran(pendaftaranContoh.map((p) => ({ kode: p.kode, nama: p.nama, noWa: p.noWa, slotLabel: p.slotLabel, status: p.status })), q);
+  const d = await cariPendaftaranPublik(String(slug), q);
   if (!d) return { ok: false, pesan: "Pendaftaran tidak ditemukan. Cek lagi kode atau nomornya." };
   return { ok: true, nama: namaSamar(d.nama), slot: d.slotLabel, status: d.status };
 }

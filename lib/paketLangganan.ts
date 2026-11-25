@@ -108,6 +108,13 @@ export interface KonfigPromo { awal: string; durasiJam: number; jedaJam: number 
 
 export const PROMO: KonfigPromo | null = { awal: "2026-11-23T08:00:00Z", durasiJam: 15, jedaJam: 24 };
 
+/**
+ * Harga pelanggan (keputusan Ferdy 2026-11-24): di dalam panel, pembayaran pertama setelah masa percobaan dan semua perpanjangan
+ * SELALU memakai harga promo (harga normal dicoret), tidak ikut jendela promo global yang di halaman publik. Dipakai di halaman Langganan,
+ * Pilih paket, dan Pembayaran supaya harga yang tampil = harga yang ditagih.
+ */
+export const PROMO_PELANGGAN: KonfigPromo = { awal: "2020-01-01T00:00:00Z", durasiJam: 24 * 365 * 100, jedaJam: null };
+
 export interface FasePromo {
   aktif: boolean;
   /** Bila aktif: kapan promo berakhir. Bila tidak: kapan promo mulai lagi (null = tidak akan mulai lagi). Dalam ms. */

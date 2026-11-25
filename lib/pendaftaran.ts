@@ -1,5 +1,6 @@
 export interface InputPendaftaran {
   slotId: string;
+  tanggal?: string;
   paketId: string;
   kategori: "anak" | "dewasa";
   nama: string;

@@ -1,26 +1,30 @@
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { PengaturanForm } from "@/components/PengaturanForm";
-import { muridContoh, tagihanContoh, tenantContoh } from "@/lib/contoh";
-import { aturanUntuk, syaratUntuk, type Pengaturan } from "@/lib/pengaturan";
+import { bolehUbahData } from "@/lib/langganan";
+import { dariTenant, type BarisTenant } from "@/lib/pengaturanDb";
+import { KOLOM_TAGIHAN, dariBarisTagihan, type BarisTagihanDb } from "@/lib/tagihanDb";
+import { ambilKonteksOwner } from "@/lib/supabase/konteks";
+import { muatDaftarMurid } from "@/lib/supabase/muridData";
+import { simpanPengaturan } from "./actions";
 
-const awal: Pengaturan = {
-  profil: { nama: tenantContoh.nama, kategori: "Renang", kota: tenantContoh.kota, deskripsi: "Les renang privat untuk anak dan dewasa. Coach berpengalaman, kolam bersih, jadwal fleksibel.", slug: tenantContoh.slug },
-  tema: "gelap",
-  istilah: { murid: tenantContoh.istilah.murid, sesi: tenantContoh.istilah.sesi, pengajar: tenantContoh.istilah.pengajar },
-  aturan: { ...aturanUntuk("Renang"), daftar: syaratUntuk("Renang", aturanUntuk("Renang"), "sesi") },
-  rekening: [],
-  templat: {
-    acc: "Halo {nama}, pendaftaran kamu di {usaha} untuk {slot} sudah disetujui. Pembayaran {total} sudah kami terima. Terima kasih!",
-    tolak: "Halo {nama}, terima kasih sudah mendaftar di {usaha}. Mohon maaf, pendaftaran untuk {slot} belum bisa kami terima. Silakan pilih slot lain di link pendaftaran ya.",
-    pengingat: "Halo {nama}, pengingat dari {usaha}: tagihan {total} jatuh tempo {tempo}. Terima kasih!",
-  },
-};
+export default async function PengaturanUsaha() {
+  const k = await ambilKonteksOwner();
+  if (!k) redirect("/masuk?lanjut=/app/pengaturan");
 
-export default function PengaturanUsaha() {
+  const [{ data: t }, { data: rek }, { data: tagihan }, murid] = await Promise.all([
+    k.db.from("tenants").select("nama, slug, kategori, tema, istilah, pengaturan").eq("id", k.tenant.id).single(),
+    k.db.from("rekening_usaha").select("id, bank, nomor, atas_nama").eq("tenant_id", k.tenant.id).order("bank"),
+    k.db.from("tagihan").select(KOLOM_TAGIHAN).eq("tenant_id", k.tenant.id).limit(2000),
+    muatDaftarMurid(k),
+  ]);
+  const rekening = ((rek ?? []) as { id: string; bank: string; nomor: string; atas_nama: string }[]).map((r) => ({ id: r.id, bank: r.bank, nomor: r.nomor, atasNama: r.atas_nama }));
+  const daftarTagihan = ((tagihan ?? []) as unknown as BarisTagihanDb[]).map(dariBarisTagihan).filter((x) => x !== null);
+
   return (
-    <main className="scroll" style={{ paddingTop: 20 }}>
+    <main className="scroll kolom2" style={{ paddingTop: 20 }}>
       <PageHeader title="Pengaturan" back="/app/lainnya" />
-      <PengaturanForm awal={awal} murid={muridContoh} tagihan={tagihanContoh} />
+      <PengaturanForm awal={dariTenant(t as unknown as BarisTenant, rekening)} murid={murid} tagihan={daftarTagihan} simpan={bolehUbahData(k.akses.akses) ? simpanPengaturan : undefined} />
     </main>
   );
 }

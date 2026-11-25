@@ -65,7 +65,7 @@ export async function buatUsaha(m: MasukanUsaha): Promise<HasilUsaha> {
   const peranAwal = await ambilPeran(db, auth.user.id);
   if (peranAwal.includes("owner")) return { ok: true, ke: tujuanSetelahMasuk(peranAwal) };
 
-  const namaPemilik = String(auth.user.user_metadata?.nama ?? "").trim() || "Pemilik";
+  const namaPemilik = String(auth.user.user_metadata?.nama ?? auth.user.user_metadata?.full_name ?? auth.user.user_metadata?.name ?? "").trim() || "Pemilik";
   const { error } = await db.rpc("daftar_usaha", bangunPayload({ nama: namaPemilik }, usaha, jenis, tema));
   if (error) {
     if (error.message.includes("akun_sudah_punya_usaha")) return { ok: true, ke: "/app" };

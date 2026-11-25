@@ -1,7 +1,7 @@
 import { validasiRekening, type Rekening } from "./rekening";
 
 export interface Pengaturan {
-  profil: { nama: string; kategori: string; kota: string; deskripsi: string; slug: string };
+  profil: { nama: string; kategori: string; kota: string; deskripsi: string; slug: string; area?: string; noWa?: string };
   tema: "gelap" | "terang";
   istilah: { murid: string; sesi: string; pengajar: string };
   aturan: { batasIzinJam: number; masaBerlakuHari: number; toleransiTelatMenit: number; sesiPengganti: boolean; daftar: string[] };

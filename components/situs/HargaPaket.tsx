@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { pecahRupiah } from "@/lib/format";
-import { BANDING, JENIS, PAKET, fasePromo, hargaPeriode, persenHemat, rupiah, singkatRupiah, type Jenis, type KonfigPromo, type Sel as NilaiSel } from "@/lib/paketLangganan";
+import { BANDING, JENIS, PAKET, fasePromo, hargaPeriode, persenHemat, rupiah, singkatRupiah, type Jenis, type KonfigPromo, type PlanKey, type Sel as NilaiSel } from "@/lib/paketLangganan";
 import { useWaktu } from "./useWaktu";
 
 type Periode = "bulanan" | "tahunan";
@@ -19,7 +19,7 @@ function Nilai({ v }: { v: NilaiSel }) {
   return <>{v}</>;
 }
 
-export function HargaPaket({ konfig, awalMs, jenisAwal = "guru_les", tanpaBanding = false }: { konfig: KonfigPromo | null; awalMs: number; jenisAwal?: Jenis; tanpaBanding?: boolean }) {
+export function HargaPaket({ konfig, awalMs, jenisAwal = "guru_les", tanpaBanding = false, hrefCta, labelCta = "Lanjut ke checkout", kunciJenis = false, tandai }: { konfig: KonfigPromo | null; awalMs: number; jenisAwal?: Jenis; tanpaBanding?: boolean; /** Pola alamat tombol, mis. "/app/langganan/checkout?paket={paket}&periode={periode}". Kosong = checkout publik. */ hrefCta?: string; labelCta?: string; /** Sembunyikan pilihan jenis (di dalam panel, jenis usaha sudah tertentu). */ kunciJenis?: boolean; /** Paket yang sedang/terakhir dipakai, diberi penanda. */ tandai?: PlanKey }) {
   const [jenis, setJenis] = useState<Jenis>(jenisAwal);
   const [periode, setPeriode] = useState<Periode>("bulanan");
   const now = useWaktu(awalMs);
@@ -29,13 +29,13 @@ export function HargaPaket({ konfig, awalMs, jenisAwal = "guru_les", tanpaBandin
   return (
     <div className="h-blok">
       <div className="h-kontrol">
-        <div className="seg h-seg" role="tablist" aria-label="Jenis pengguna">
+        {!kunciJenis && <div className="seg h-seg" role="tablist" aria-label="Jenis pengguna">
           {(Object.keys(JENIS) as Jenis[]).map((j) => (
             <button key={j} type="button" role="tab" aria-selected={jenis === j} className={jenis === j ? "on" : ""} onClick={() => setJenis(j)}>
               {JENIS[j].nama}
             </button>
           ))}
-        </div>
+        </div>}
         <div className="seg h-seg" role="tablist" aria-label="Periode bayar">
           <button type="button" role="tab" aria-selected={periode === "bulanan"} className={periode === "bulanan" ? "on" : ""} onClick={() => setPeriode("bulanan")}>Bulanan</button>
           <button type="button" role="tab" aria-selected={periode === "tahunan"} className={periode === "tahunan" ? "on" : ""} onClick={() => setPeriode("tahunan")}>Tahunan · gratis 2 bulan</button>
@@ -50,7 +50,7 @@ export function HargaPaket({ konfig, awalMs, jenisAwal = "guru_les", tanpaBandin
           const satuan = periode === "bulanan" ? "/bulan" : "/tahun";
           return (
             <article key={key} className={`h-kartu ${p.sorot ? "panel h-sorot" : "surface"}`} aria-labelledby={`h-${key}`}>
-              {p.sorot && <span className="h-badge">Paling dipilih</span>}
+              {tandai === key ? <span className="h-badge">Paketmu sebelumnya</span> : p.sorot && <span className="h-badge">Paling dipilih</span>}
               <h3 id={`h-${key}`} className="h-nama">{p.nama}</h3>
               <p className="h-tag">{p.tagline}</p>
               <div className="h-harga">
@@ -65,7 +65,7 @@ export function HargaPaket({ konfig, awalMs, jenisAwal = "guru_les", tanpaBandin
                   {periode === "tahunan" ? `Setara ${singkatRupiah(Math.round(h.total / 12))}/bulan · bayar 10 bulan untuk 12` : promo && h.promo ? "Harga promo peluncuran" : "Harga normal"}
                 </span>
               </div>
-              <Link href={`/checkout?paket=${key}&periode=${periode}`} className={`btn ${p.sorot ? "" : "btn-2"} h-cta`}>Lanjut ke checkout</Link>
+              <Link href={hrefCta ? hrefCta.replace("{paket}", key).replace("{periode}", periode) : `/checkout?paket=${key}&periode=${periode}`} className={`btn ${p.sorot ? "" : "btn-2"} h-cta`}>{labelCta}</Link>
               <ul className="h-list">
                 {p.sorotan.map((s) => (
                   <li key={s}><Icon name="check" className="ic h-ya" /><span>{s}</span></li>

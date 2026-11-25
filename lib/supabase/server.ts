@@ -24,5 +24,6 @@ export function klienAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const kunci = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !kunci) throw new Error("SUPABASE_SERVICE_ROLE_KEY belum diisi di .env.local");
-  return createClient(url, kunci, { auth: { persistSession: false, autoRefreshToken: false } });
+  // Tanpa cache: pembacaan lewat klien ini (token portal, slot publik, bukti bayar) tidak boleh basi.
+  return createClient(url, kunci, { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) } });
 }

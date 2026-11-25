@@ -5,7 +5,10 @@ import { pecahRupiah, tglPendek } from "@/lib/format";
 import { kodeReferral, ringkasNilai, statusPromo, validasiPromo, type InputPromo, type PromoOwner as Promo, type StatusPromo } from "@/lib/promo";
 
 interface Pemakaian { id: string; kode: string; nama: string; tgl: string; potongan: number }
-interface Props { awal: Promo[]; pemakaian: Pemakaian[]; murid: { id: string; nama: string }[]; hariIni: string }
+type Biasa = { ok: true } | { ok: false; pesan: string };
+type HasilBaru = { ok: true; promo: Promo } | { ok: false; pesan: string; galat?: Record<string, string> };
+export interface AksiPromo { buat: (i: InputPromo) => Promise<HasilBaru>; buatReferral: (muridId: string, potongan: number) => Promise<HasilBaru>; ubahAktif: (id: string, aktif: boolean) => Promise<Biasa>; hapus: (id: string) => Promise<Biasa> }
+interface Props { awal: Promo[]; pemakaian: Pemakaian[]; murid: { id: string; nama: string }[]; hariIni: string; aksi?: AksiPromo; bolehUbah?: boolean }
 const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`;
 const label: Record<StatusPromo, { teks: string; kelas: string }> = {
   aktif: { teks: "Aktif", kelas: "st st-ok" }, nonaktif: { teks: "Nonaktif", kelas: "st st-free" },
@@ -13,7 +16,7 @@ const label: Record<StatusPromo, { teks: string; kelas: string }> = {
 };
 const kosongForm = { kode: "", jenis: "persen" as "persen" | "nominal", nilai: "", kuota: "", kedaluwarsa: "" };
 
-export function PromoOwnerList({ awal, pemakaian, murid, hariIni }: Props) {
+export function PromoOwnerList({ awal, pemakaian, murid, hariIni, aksi, bolehUbah = true }: Props) {
   const [daftar, setDaftar] = useState(awal);
   const [tab, setTab] = useState<"promo" | "referral">("promo");
   const [buka, setBuka] = useState<string | null>(null);
@@ -24,6 +27,7 @@ export function PromoOwnerList({ awal, pemakaian, murid, hariIni }: Props) {
   const [pilihMurid, setPilihMurid] = useState("");
   const [potonganRef, setPotonganRef] = useState("50000");
   const [toast, setToast] = useState("");
+  const [sibuk, setSibuk] = useState(false);
 
   const promo = daftar.filter((p) => !p.pemilik);
   const referral = daftar.filter((p) => p.pemilik);
@@ -35,25 +39,65 @@ export function PromoOwnerList({ awal, pemakaian, murid, hariIni }: Props) {
   const bersih = (k: string) => setGalat((g) => { const n = { ...g }; delete n[k]; return n; });
   const ubah = (id: string, isi: Partial<Promo>) => setDaftar((d) => d.map((p) => (p.id === id ? { ...p, ...isi } : p)));
 
-  function buat() {
+  async function buat() {
+    if (sibuk) return;
     const i: InputPromo = { kode: form.kode, jenis: form.jenis, nilai: Number(form.nilai.replace(/\D/g, "")), kuota: form.kuota.trim() === "" ? null : Number(form.kuota.replace(/\D/g, "")), kedaluwarsa: form.kedaluwarsa || null };
     const g = validasiPromo(i, kodeAda, hariIni);
     setGalat(g);
     if (Object.keys(g).length > 0) return;
-    setDaftar((d) => [{ id: `baru-${Date.now()}`, kode: i.kode.trim().toUpperCase(), jenis: i.jenis, nilai: i.nilai, kuota: i.kuota, terpakai: 0, kedaluwarsa: i.kedaluwarsa, aktif: true }, ...d]);
+    let baru: Promo = { id: `baru-${Date.now()}`, kode: i.kode.trim().toUpperCase(), jenis: i.jenis, nilai: i.nilai, kuota: i.kuota, terpakai: 0, kedaluwarsa: i.kedaluwarsa, aktif: true };
+    if (aksi) {
+      setSibuk(true);
+      const r = await aksi.buat(i);
+      setSibuk(false);
+      if (!r.ok) { if (r.galat) setGalat(r.galat); else info(r.pesan); return; }
+      baru = r.promo;
+    }
+    setDaftar((d) => [baru, ...d]);
     setForm(kosongForm); setFormBuka(false);
-    info(`Kode ${i.kode.trim().toUpperCase()} dibuat.`);
+    info(`Kode ${baru.kode} dibuat.`);
   }
 
-  function buatReferral() {
+  async function buatReferral() {
+    if (sibuk) return;
     const m = murid.find((x) => x.id === pilihMurid);
     if (!m) { setGalat({ murid: "Pilih murid dulu." }); return; }
     const nilai = Number(potonganRef.replace(/\D/g, ""));
     if (nilai < 1000 || nilai > 10_000_000) { setGalat({ potongan: "Nominal Rp 1.000–10.000.000." }); return; }
-    const kode = kodeReferral(m.nama, kodeAda);
-    setDaftar((d) => [{ id: `ref-${Date.now()}`, kode, jenis: "nominal", nilai, kuota: null, terpakai: 0, kedaluwarsa: null, aktif: true, pemilik: m.nama }, ...d]);
+    let baru: Promo = { id: `ref-${Date.now()}`, kode: kodeReferral(m.nama, kodeAda), jenis: "nominal", nilai, kuota: null, terpakai: 0, kedaluwarsa: null, aktif: true, pemilik: m.nama };
+    if (aksi) {
+      setSibuk(true);
+      const r = await aksi.buatReferral(m.id, nilai);
+      setSibuk(false);
+      if (!r.ok) { info(r.pesan); return; }
+      baru = r.promo;
+    }
+    setDaftar((d) => [baru, ...d]);
     setPilihMurid(""); setGalat({});
-    info(`Kode referral ${kode} untuk ${m.nama} dibuat.`);
+    info(`Kode referral ${baru.kode} untuk ${m.nama} dibuat.`);
+  }
+
+  async function alihAktif(p: Promo) {
+    if (sibuk) return;
+    if (aksi) {
+      setSibuk(true);
+      const r = await aksi.ubahAktif(p.id, !p.aktif);
+      setSibuk(false);
+      if (!r.ok) { info(r.pesan); return; }
+    }
+    ubah(p.id, { aktif: !p.aktif });
+    info(p.aktif ? `${p.kode} dinonaktifkan.` : `${p.kode} diaktifkan.`);
+  }
+
+  async function hapusKode(p: Promo) {
+    if (sibuk) return;
+    if (aksi) {
+      setSibuk(true);
+      const r = await aksi.hapus(p.id);
+      setSibuk(false);
+      if (!r.ok) { info(r.pesan); return; }
+    }
+    setDaftar((d) => d.filter((x) => x.id !== p.id)); setBuka(null); setHapus(null); info(`${p.kode} dihapus.`);
   }
 
   const E = ({ k }: { k: string }) => (galat[k] ? <span className="galat" role="alert">{galat[k]}</span> : null);
@@ -101,10 +145,10 @@ export function PromoOwnerList({ awal, pemakaian, murid, hariIni }: Props) {
                       ))}
                     </div>
                     <div className="aksi">
-                      <button type="button" className="btn btn-2 btn-sm" onClick={() => { ubah(p.id, { aktif: !p.aktif }); info(p.aktif ? `${p.kode} dinonaktifkan.` : `${p.kode} diaktifkan.`); }}>{p.aktif ? "Nonaktifkan" : "Aktifkan"}</button>
+                      <button type="button" className="btn btn-2 btn-sm" disabled={!bolehUbah || sibuk} onClick={() => alihAktif(p)}>{p.aktif ? "Nonaktifkan" : "Aktifkan"}</button>
                       {hapus === p.id ? (
                         <>
-                          <button type="button" className="btn btn-2 btn-sm" onClick={() => { setDaftar((d) => d.filter((x) => x.id !== p.id)); setBuka(null); setHapus(null); info(`${p.kode} dihapus.`); }}>Ya, hapus</button>
+                          <button type="button" className="btn btn-2 btn-sm" disabled={!bolehUbah || sibuk} onClick={() => hapusKode(p)}>Ya, hapus</button>
                           <button type="button" className="btn btn-2 btn-sm" onClick={() => setHapus(null)}>Batal</button>
                         </>
                       ) : <button type="button" className="btn btn-2 btn-sm" onClick={() => setHapus(p.id)}>Hapus</button>}

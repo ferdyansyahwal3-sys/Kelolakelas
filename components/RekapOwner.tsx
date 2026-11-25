@@ -1,17 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { toCsv } from "@/lib/csv";
 import { pecahRupiah, ringkasRupiah } from "@/lib/format";
 import { batalkanGajiDibayar, kunciGaji, tandaiGajiDibayar, type GajiDibayar } from "@/lib/gaji";
 import { bagiHasil, geserBulan, namaBulan, perPaket, perubahan, ringkasBulan, tren6, validasiNilai, type ModeBagi, type Pembayaran } from "@/lib/rekap";
 
-interface Props { hariIni: string; dibayarAwal: GajiDibayar; pembayaran: Pembayaran[]; pengajar: { id: string; nama: string }[]; persenAwal: Record<string, number>; nominalAwal: Record<string, number>; bulanAwal: string; bulanMin: string }
+type Biasa = { ok: true } | { ok: false; pesan: string };
+export interface SimpanRekap { bagiHasil: (v: { mode: ModeBagi; persen: Record<string, number>; nominal: Record<string, number> }) => Promise<Biasa>; gaji: (d: GajiDibayar) => Promise<Biasa> }
+interface Props { hariIni: string; dibayarAwal: GajiDibayar; pembayaran: Pembayaran[]; pengajar: { id: string; nama: string }[]; persenAwal: Record<string, number>; nominalAwal: Record<string, number>; modeAwal?: ModeBagi; bulanAwal: string; bulanMin: string; simpan?: SimpanRekap }
 const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`;
 
-export function RekapOwner({ hariIni, dibayarAwal, pembayaran, pengajar, persenAwal, nominalAwal, bulanAwal, bulanMin }: Props) {
+export function RekapOwner({ hariIni, dibayarAwal, pembayaran, pengajar, persenAwal, nominalAwal, modeAwal = "persen", bulanAwal, bulanMin, simpan }: Props) {
   const [bulan, setBulan] = useState(bulanAwal);
-  const [mode, setMode] = useState<ModeBagi>("persen");
+  const [mode, setMode] = useState<ModeBagi>(modeAwal);
   const [nilai, setNilai] = useState<Record<ModeBagi, Record<string, number>>>({ persen: persenAwal, nominal: nominalAwal });
   const [galat, setGalat] = useState<Record<string, string>>({});
   const [toast, setToast] = useState("");
@@ -22,6 +24,7 @@ export function RekapOwner({ hariIni, dibayarAwal, pembayaran, pengajar, persenA
 
   // Bagi hasil dan status gaji disimpan di perangkat ini supaya halaman pelatih di perangkat yang sama membaca angka yang sama.
   useEffect(() => {
+    if (simpan) return; // panel asli: nilai awal datang dari database
     try {
       const b = JSON.parse(localStorage.getItem("kk-bagi-hasil") ?? "null") as { mode?: ModeBagi; nilai?: Record<ModeBagi, Record<string, number>> } | null;
       if (b?.mode === "persen" || b?.mode === "nominal") setMode(b.mode);
@@ -29,9 +32,27 @@ export function RekapOwner({ hariIni, dibayarAwal, pembayaran, pengajar, persenA
       const g = JSON.parse(localStorage.getItem("kk-gaji-dibayar") ?? "null") as GajiDibayar | null;
       if (g && typeof g === "object" && !Array.isArray(g)) setDibayar(g);
     } catch {}
-  }, [persenAwal, nominalAwal]);
-  useEffect(() => { try { localStorage.setItem("kk-bagi-hasil", JSON.stringify({ mode, nilai })); } catch {} }, [mode, nilai]);
-  const simpanDibayar = (d: GajiDibayar) => { setDibayar(d); try { localStorage.setItem("kk-gaji-dibayar", JSON.stringify(d)); } catch {} };
+  }, [persenAwal, nominalAwal, simpan]);
+  const awalMuat = useRef(true);
+  useEffect(() => {
+    if (simpan) {
+      if (awalMuat.current) { awalMuat.current = false; return; }
+      const t = setTimeout(async () => {
+        const r = await simpan.bagiHasil({ mode, persen: nilai.persen, nominal: nilai.nominal });
+        if (!r.ok) { setToast(r.pesan); setTimeout(() => setToast(""), 3500); }
+      }, 700);
+      return () => clearTimeout(t);
+    }
+    try { localStorage.setItem("kk-bagi-hasil", JSON.stringify({ mode, nilai })); } catch {}
+  }, [mode, nilai, simpan]);
+  const simpanDibayar = async (d: GajiDibayar) => {
+    if (simpan) {
+      const r = await simpan.gaji(d);
+      if (!r.ok) { setGalatGaji(r.pesan); return; }
+    }
+    setDibayar(d);
+    if (!simpan) { try { localStorage.setItem("kk-gaji-dibayar", JSON.stringify(d)); } catch {} }
+  };
 
   const ini = ringkasBulan(pembayaran, bulan);
   const lalu = ringkasBulan(pembayaran, geserBulan(bulan, -1));
@@ -176,7 +197,7 @@ export function RekapOwner({ hariIni, dibayarAwal, pembayaran, pengajar, persenA
           ))}
           <div className="item" style={{ justifyContent: "space-between" }}><b>Bersih untuk owner</b><b>{rp(bagi.ownerTotal)}</b></div>
         </div>
-        <p className="meta" style={{ margin: 0 }}>{mode === "persen" ? "Persen dari omzet murid tiap pengajar, dibulatkan ke bawah." : "Nominal tetap per bulan untuk tiap pengajar, tidak melebihi omzetnya."} Diatur owner, dan baru berlaku di halaman ini sampai database tersambung.</p>
+        <p className="meta" style={{ margin: 0 }}>{mode === "persen" ? "Persen dari omzet murid tiap pengajar, dibulatkan ke bawah." : "Nominal tetap per bulan untuk tiap pengajar, tidak melebihi omzetnya."} {simpan ? "Diatur owner dan tersimpan di akun usahamu." : "Diatur owner, dan hanya berlaku di halaman ini (demo)."}</p>
       </section>
 
       <button type="button" className="btn btn-2" onClick={unduh} disabled={ini.jumlah === 0}>Unduh rekap {namaBulan(bulan)} (CSV)</button>

@@ -13,7 +13,10 @@ const tab: { id: Tab; nama: string; status: StatusTagihan }[] = [
   { id: "lunas", nama: "Lunas", status: "lunas" },
 ];
 
-export function TagihanOwnerList({ awal, hariIni, usaha }: { awal: TagihanOwner[]; hariIni: string; usaha: string }) {
+type Hasil = { ok: true } | { ok: false; pesan: string };
+export interface AksiTagihan { lunas: (id: string, metode: string, tanggal: string) => Promise<Hasil>; tolak: (id: string) => Promise<Hasil> }
+
+export function TagihanOwnerList({ awal, hariIni, usaha, aksi, bolehUbah = true }: { awal: TagihanOwner[]; hariIni: string; usaha: string; aksi?: AksiTagihan; bolehUbah?: boolean }) {
   const [daftar, setDaftar] = useState(awal);
   const [aktif, setAktif] = useState<Tab>(awal.some((t) => t.status === "menunggu_verifikasi") ? "dicek" : "belum");
   const [buka, setBuka] = useState<string | null>(null);
@@ -22,6 +25,7 @@ export function TagihanOwnerList({ awal, hariIni, usaha }: { awal: TagihanOwner[
   const [tanggal, setTanggal] = useState(hariIni);
   const [galat, setGalat] = useState("");
   const [toast, setToast] = useState("");
+  const [sibuk, setSibuk] = useState(false);
 
   const r = ringkasan(daftar, hariIni);
   const status = tab.find((t) => t.id === aktif)!.status;
@@ -32,15 +36,29 @@ export function TagihanOwnerList({ awal, hariIni, usaha }: { awal: TagihanOwner[
   function ganti(id: string | null) { setBuka(id); setTolak(null); setGalat(""); setMetode("tunai"); setTanggal(hariIni); }
   function perbarui(baru: TagihanOwner) { setDaftar((d) => d.map((t) => (t.id === baru.id ? baru : t))); }
 
-  function lunas(t: TagihanOwner, m: Metode, tgl: string) {
+  async function lunas(t: TagihanOwner, m: Metode, tgl: string) {
+    if (sibuk) return;
     const h = tandaiLunas(t, m, tgl, hariIni);
     if (!h.ok) { setGalat(h.galat); return; }
+    if (aksi) {
+      setSibuk(true);
+      const r = await aksi.lunas(t.id, m, tgl);
+      setSibuk(false);
+      if (!r.ok) { setGalat(r.pesan); return; }
+    }
     perbarui(h.tagihan);
     ganti(null);
     info(`${t.nama} lunas, ${rp(t.nominal)}.`);
   }
 
-  function tolakBukti_(t: TagihanOwner) {
+  async function tolakBukti_(t: TagihanOwner) {
+    if (sibuk) return;
+    if (aksi) {
+      setSibuk(true);
+      const r = await aksi.tolak(t.id);
+      setSibuk(false);
+      if (!r.ok) { setGalat(r.pesan); return; }
+    }
     perbarui(tolakBukti(t));
     ganti(null);
     info(`Bukti ${t.nama} ditolak. Kirim WA minta bukti baru.`);
@@ -110,10 +128,10 @@ export function TagihanOwnerList({ awal, hariIni, usaha }: { awal: TagihanOwner[
                         </div>
                         <p className="meta" style={{ margin: 0 }}>Cocokkan nominal dan nama pengirim di mutasi rekening sebelum menerima.</p>
                         <div className="aksi">
-                          <button type="button" className="btn btn-sm" onClick={() => lunas(t, t.bukti!.metode, hariIni)}>Terima, tandai lunas</button>
+                          <button type="button" className="btn btn-sm" disabled={!bolehUbah || sibuk} onClick={() => lunas(t, t.bukti!.metode, hariIni)}>Terima, tandai lunas</button>
                           {tolak === t.id ? (
                             <>
-                              <button type="button" className="btn btn-2 btn-sm" onClick={() => tolakBukti_(t)}>Ya, tolak</button>
+                              <button type="button" className="btn btn-2 btn-sm" disabled={!bolehUbah || sibuk} onClick={() => tolakBukti_(t)}>Ya, tolak</button>
                               <button type="button" className="btn btn-2 btn-sm" onClick={() => setTolak(null)}>Batal</button>
                             </>
                           ) : (
@@ -134,7 +152,7 @@ export function TagihanOwnerList({ awal, hariIni, usaha }: { awal: TagihanOwner[
                           <input type="date" value={tanggal} max={hariIni} onChange={(e) => { setTanggal(e.target.value); setGalat(""); }} /></label>
                         {galat && <p className="galat" role="alert" style={{ margin: 0 }}>{galat}</p>}
                         <div className="aksi">
-                          <button type="button" className="btn btn-sm" onClick={() => lunas(t, metode, tanggal)}>Catat sudah bayar</button>
+                          <button type="button" className="btn btn-sm" disabled={!bolehUbah || sibuk} onClick={() => lunas(t, metode, tanggal)}>{sibuk ? "Menyimpan…" : "Catat sudah bayar"}</button>
                           <a className="btn btn-2 btn-sm" href={pengingat(t)} target="_blank" rel="noopener noreferrer"><Icon name="wa" />Kirim pengingat</a>
                         </div>
                       </>

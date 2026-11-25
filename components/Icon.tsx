@@ -1,4 +1,6 @@
 const paths: Record<string, React.ReactNode> = {
+  gear: (<><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></>),
+  lock: (<><rect x="5" y="10.5" width="14" height="9.5" rx="2.5" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></>),
   home: <path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" />,
   cal: (<><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /></>),
   users: (<><circle cx="9" cy="8.5" r="3.2" /><path d="M3 19.5c.7-3 3.1-4.8 6-4.8s5.3 1.8 6 4.8M15.5 5.6a3.2 3.2 0 0 1 0 6M17.6 14.9c1.8.6 3 2.2 3.4 4.6" /></>),

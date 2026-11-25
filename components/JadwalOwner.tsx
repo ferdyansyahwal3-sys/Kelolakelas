@@ -6,13 +6,22 @@ import { hitungSlot, kelasStatusSlot } from "@/lib/slot";
 
 interface Hari { hari: number; nama: string; tgl: string; angka: number }
 interface Pengajar { id: string; nama: string }
-interface Props { awal: SlotJadwal[]; pengajar: Pengajar[]; minggu: Hari[]; hariAwal: number }
+type Biasa = { ok: true } | { ok: false; pesan: string };
+export interface AksiJadwal {
+  tambah: (i: { pengajarId: string; hari: number; jam: string; nama: string; kuota: number; durasi: number; lokasi: string }) => Promise<{ ok: true; id: string; jam: string } | { ok: false; pesan: string; galat?: GalatSlot }>;
+  ubahKuota: (id: string, kuota: number) => Promise<Biasa>;
+  hapus: (id: string) => Promise<Biasa>;
+  tutup: (id: string, tanggal: string, tutup: boolean) => Promise<Biasa>;
+}
+interface Props { awal: SlotJadwal[]; pengajar: Pengajar[]; minggu: Hari[]; hariAwal: number; tutupAwal?: string[]; bolehUbah?: boolean; aksi?: AksiJadwal }
+const BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
-export function JadwalOwner({ awal, pengajar, minggu, hariAwal }: Props) {
+export function JadwalOwner({ awal, pengajar, minggu, hariAwal, tutupAwal, bolehUbah = true, aksi }: Props) {
   const [slot, setSlot] = useState(awal);
   const [pid, setPid] = useState(pengajar[0]!.id);
   const [hari, setHari] = useState(hariAwal);
-  const [tutup, setTutup] = useState<Set<string>>(new Set());
+  const [tutup, setTutup] = useState<Set<string>>(new Set(tutupAwal ?? []));
+  const [sibuk, setSibuk] = useState(false);
   const [buka, setBuka] = useState<string | null>(null);
   const [konfirmasiHapus, setKonfirmasiHapus] = useState<string | null>(null);
   const [galatKuota, setGalatKuota] = useState("");
@@ -34,37 +43,66 @@ export function JadwalOwner({ awal, pengajar, minggu, hariAwal }: Props) {
 
   function pilih(fn: () => void) { setBuka(null); setKonfirmasiHapus(null); setGalatKuota(""); fn(); }
 
-  function setKuota(s: SlotJadwal, baru: number) {
+  async function jalankan(fn: () => Promise<Biasa>): Promise<boolean> {
+    if (sibuk) return false;
+    setSibuk(true);
+    const r = await fn();
+    setSibuk(false);
+    if (!r.ok) { info(r.pesan); return false; }
+    return true;
+  }
+
+  async function setKuota(s: SlotJadwal, baru: number) {
     const h = ubahKuota(s, baru);
     if (!h.ok) { setGalatKuota(h.galat); return; }
     setGalatKuota("");
+    if (aksi && !(await jalankan(() => aksi.ubahKuota(s.id, baru)))) return;
     setSlot((d) => d.map((x) => (x.id === s.id ? { ...x, kuota: baru } : x)));
   }
 
-  function alihTutup(id: string) {
-    setTutup((t) => { const n = new Set(t); n.has(kunci(id)) ? n.delete(kunci(id)) : n.add(kunci(id)); return n; });
+  async function alihTutup(id: string) {
+    const tutupBaru = !tutup.has(kunci(id));
+    if (aksi && !(await jalankan(() => aksi.tutup(id, tgl, tutupBaru)))) return;
+    setTutup((t) => { const n = new Set(t); tutupBaru ? n.add(kunci(id)) : n.delete(kunci(id)); return n; });
   }
 
-  function alihLibur() {
+  async function alihLibur() {
+    const tutupBaru = !semuaTutup;
+    if (aksi) {
+      for (const s of duaHariIni) {
+        if (tutup.has(kunci(s.id)) === tutupBaru) continue;
+        if (!(await jalankan(() => aksi.tutup(s.id, tgl, tutupBaru)))) return;
+      }
+    }
     setTutup((t) => {
       const n = new Set(t);
-      duaHariIni.forEach((s) => (semuaTutup ? n.delete(kunci(s.id)) : n.add(kunci(s.id))));
+      duaHariIni.forEach((s) => (tutupBaru ? n.add(kunci(s.id)) : n.delete(kunci(s.id))));
       return n;
     });
     info(semuaTutup ? "Hari ini dibuka lagi." : "Hari ini ditandai libur, semua slot ditutup.");
   }
 
-  function hapus(s: SlotJadwal) {
+  async function hapus(s: SlotJadwal) {
+    if (aksi && !(await jalankan(() => aksi.hapus(s.id)))) { setKonfirmasiHapus(null); return; }
     setSlot((d) => d.filter((x) => x.id !== s.id));
     setBuka(null);
     setKonfirmasiHapus(null);
     info(`Slot ${s.jam} dihapus dari jadwal tetap.`);
   }
 
-  function tambah() {
+  async function tambah() {
     const h = validasiSlotBaru(form, duaHariIni);
     if (!h.ok) { setGalat(h.galat); return; }
-    setSlot((d) => [...d, { id: `baru-${Date.now()}`, pengajarId: pid, hari, jam: h.jam, nama: form.nama.trim(), durasi: form.durasi, kuota: form.kuota, lokasi: form.lokasi.trim() || undefined, terisi: 0 }]);
+    let id = `baru-${Date.now()}`;
+    if (aksi) {
+      if (sibuk) return;
+      setSibuk(true);
+      const r = await aksi.tambah({ pengajarId: pid, hari, ...form });
+      setSibuk(false);
+      if (!r.ok) { if (r.galat) setGalat(r.galat); else info(r.pesan); return; }
+      id = r.id;
+    }
+    setSlot((d) => [...d, { id, pengajarId: pid, hari, jam: h.jam, nama: form.nama.trim(), durasi: form.durasi, kuota: form.kuota, lokasi: form.lokasi.trim() || undefined, terisi: 0 }]);
     setForm({ jam: "", nama: "", kuota: 1, durasi: 60, lokasi: "" });
     setGalat({});
     setFormBuka(false);
@@ -93,7 +131,7 @@ export function JadwalOwner({ awal, pengajar, minggu, hariAwal }: Props) {
       </div>
 
       <div className="sec-head">
-        <h2 className="h2">{namaHari.nama} {namaHari.angka} Nov</h2>
+        <h2 className="h2">{namaHari.nama} {namaHari.angka} {BULAN[Number(tgl.slice(5, 7)) - 1]}</h2>
         <span className="meta">{duaHariIni.length} slot · {jumlahMurid} murid</span>
       </div>
 
@@ -125,17 +163,17 @@ export function JadwalOwner({ awal, pengajar, minggu, hariAwal }: Props) {
                     <div className="kuota">
                       <span className="sub">Kuota per sesi</span>
                       <div className="stepper">
-                        <button type="button" aria-label="Kurangi kuota" onClick={() => setKuota(s, s.kuota - 1)}>−</button>
+                        <button type="button" aria-label="Kurangi kuota" onClick={() => setKuota(s, s.kuota - 1)} disabled={!bolehUbah || sibuk}>−</button>
                         <b aria-live="polite">{s.kuota}</b>
-                        <button type="button" aria-label="Tambah kuota" onClick={() => setKuota(s, s.kuota + 1)} disabled={s.kuota >= KUOTA_MAKS}>+</button>
+                        <button type="button" aria-label="Tambah kuota" onClick={() => setKuota(s, s.kuota + 1)} disabled={!bolehUbah || sibuk || s.kuota >= KUOTA_MAKS}>+</button>
                       </div>
                     </div>
                     {galatKuota && <p className="galat" role="alert" style={{ margin: 0 }}>{galatKuota}</p>}
                     <div className="aksi">
-                      <button type="button" className="btn btn-2 btn-sm" onClick={() => alihTutup(s.id)}>{ditutup ? "Buka slot hari ini" : "Tutup slot hari ini"}</button>
+                      <button type="button" className="btn btn-2 btn-sm" disabled={!bolehUbah || sibuk} onClick={() => alihTutup(s.id)}>{ditutup ? "Buka slot hari ini" : "Tutup slot hari ini"}</button>
                       {konfirmasiHapus === s.id ? (
                         <>
-                          <button type="button" className="btn btn-2 btn-sm" onClick={() => hapus(s)}>Ya, hapus</button>
+                          <button type="button" className="btn btn-2 btn-sm" disabled={!bolehUbah || sibuk} onClick={() => hapus(s)}>Ya, hapus</button>
                           <button type="button" className="btn btn-2 btn-sm" onClick={() => setKonfirmasiHapus(null)}>Batal</button>
                         </>
                       ) : (
@@ -157,7 +195,7 @@ export function JadwalOwner({ awal, pengajar, minggu, hariAwal }: Props) {
 
       {duaHariIni.length > 0 && (
         <div className="aksi">
-          <button type="button" className="btn btn-2 btn-sm" onClick={alihLibur}>{semuaTutup ? "Buka lagi hari ini" : "Tandai libur"}</button>
+          <button type="button" className="btn btn-2 btn-sm" disabled={!bolehUbah || sibuk} onClick={alihLibur}>{semuaTutup ? "Buka lagi hari ini" : "Tandai libur"}</button>
         </div>
       )}
 
@@ -181,7 +219,7 @@ export function JadwalOwner({ awal, pengajar, minggu, hariAwal }: Props) {
           <label className="field"><span className="label" style={{ color: "var(--text-2)" }}>Lokasi (opsional)</span>
             <input value={form.lokasi} onChange={(e) => setForm({ ...form, lokasi: e.target.value })} placeholder="Kolam A" /></label>
           <div className="aksi">
-            <button type="submit" className="btn">Simpan slot</button>
+            <button type="submit" className="btn" disabled={!bolehUbah || sibuk}>{sibuk ? "Menyimpan…" : "Simpan slot"}</button>
             <button type="button" className="btn btn-2" onClick={() => { setFormBuka(false); setGalat({}); }}>Batal</button>
           </div>
         </form>
@@ -189,6 +227,7 @@ export function JadwalOwner({ awal, pengajar, minggu, hariAwal }: Props) {
         <button type="button" className="btn" onClick={() => setFormBuka(true)}>Tambah slot</button>
       )}
 
+      {!bolehUbah && <p className="meta" style={{ margin: 0 }}>Langgananmu belum aktif, jadi jadwal hanya bisa dilihat. Perpanjang di halaman Langganan.</p>}
       {toast && <div className="toast" role="status">{toast}</div>}
     </>
   );

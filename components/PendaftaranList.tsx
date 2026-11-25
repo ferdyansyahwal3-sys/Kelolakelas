@@ -8,7 +8,10 @@ import type { PendaftaranContoh, StatusPendaftaran } from "@/lib/contoh";
 
 interface Paket { id: string; nama: string; harga: number; jumlahSesi: number }
 interface Promo { kode: string; jenis: "persen" | "nominal"; nilai: number }
-interface Props { awal: PendaftaranContoh[]; paket: Paket[]; promo: Promo[]; usaha: string; linkDaftar: string; slug: string }
+type Hasil = { ok: true } | { ok: false; pesan: string };
+export interface AksiPendaftaran { setujui: (id: string) => Promise<Hasil>; tolak: (id: string) => Promise<Hasil>; lihatBukti?: (id: string) => Promise<{ ok: true; url: string } | { ok: false; pesan: string }> }
+type Baris = PendaftaranContoh & { total?: number };
+interface Props { awal: Baris[]; paket: Paket[]; promo: Promo[]; usaha: string; linkDaftar: string; slug: string; aksi?: AksiPendaftaran; bolehUbah?: boolean }
 
 const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`;
 const tab: { id: StatusPendaftaran; nama: string }[] = [
@@ -17,7 +20,7 @@ const tab: { id: StatusPendaftaran; nama: string }[] = [
   { id: "ditolak", nama: "Ditolak" },
 ];
 
-export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar, slug }: Props) {
+export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar, slug, aksi, bolehUbah = true }: Props) {
   const [daftar, setDaftar] = useState(awal);
   const [aktif, setAktif] = useState<StatusPendaftaran>("menunggu");
   const [buka, setBuka] = useState<string | null>(null);
@@ -26,11 +29,13 @@ export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar, slug }:
   const [tagihan, setTagihan] = useState<Record<string, { nominal: number; tempo: string }>>({});
   const [toast, setToast] = useState("");
   const [tersalin, setTersalin] = useState(false);
+  const [sibuk, setSibuk] = useState<string | null>(null);
 
   const tampil = daftar.filter((p) => p.status === aktif);
   const hitung = (s: StatusPendaftaran) => daftar.filter((p) => p.status === s).length;
-  const infoPaket = (p: PendaftaranContoh) => paket.find((x) => x.id === p.paketId)!;
-  const total = (p: PendaftaranContoh) => buatMuridDanTagihan(p, infoPaket(p), cariPromo(p.kodePromo ?? "", promo), new Date()).tagihan.nominal;
+  const infoPaket = (p: PendaftaranContoh) => paket.find((x) => x.id === p.paketId) ?? { id: p.paketId, nama: "Paket dihapus", harga: 0, jumlahSesi: 0 };
+  const total = (p: Baris) => p.total ?? buatMuridDanTagihan(p, infoPaket(p), cariPromo(p.kodePromo ?? "", promo), new Date()).tagihan.nominal;
+  const pesan = (t: string) => { setToast(t); setTimeout(() => setToast(""), 3500); };
 
   function ubahStatus(id: string, status: StatusPendaftaran) {
     setDaftar((d) => d.map((p) => (p.id === id ? { ...p, status } : p)));
@@ -39,12 +44,35 @@ export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar, slug }:
     setKonfirmasiAcc(null);
   }
 
-  function acc(p: PendaftaranContoh) {
+  async function acc(p: Baris) {
+    if (sibuk) return;
     const h = buatMuridDanTagihan(p, infoPaket(p), cariPromo(p.kodePromo ?? "", promo), new Date());
-    setTagihan((t) => ({ ...t, [p.id]: { nominal: h.tagihan.nominal, tempo: h.tagihan.jatuhTempo } }));
+    if (aksi) {
+      setSibuk(p.id);
+      const r = await aksi.setujui(p.id);
+      setSibuk(null);
+      if (!r.ok) { pesan(r.pesan); return; }
+    }
+    setTagihan((t) => ({ ...t, [p.id]: { nominal: p.total ?? h.tagihan.nominal, tempo: h.tagihan.jatuhTempo } }));
     ubahStatus(p.id, "disetujui");
-    setToast(`${p.nama} disetujui. Murid dan tagihan dibuat.`);
-    setTimeout(() => setToast(""), 3500);
+    pesan(`${p.nama} disetujui. Murid dan tagihan dibuat.`);
+  }
+
+  async function bukaBukti(p: Baris) {
+    if (!aksi?.lihatBukti) return;
+    const r = await aksi.lihatBukti(p.id);
+    if (r.ok) window.open(r.url, "_blank", "noopener,noreferrer"); else pesan(r.pesan);
+  }
+
+  async function tolak(p: Baris) {
+    if (sibuk) return;
+    if (aksi) {
+      setSibuk(p.id);
+      const r = await aksi.tolak(p.id);
+      setSibuk(null);
+      if (!r.ok) { pesan(r.pesan); return; }
+    }
+    ubahStatus(p.id, "ditolak");
   }
 
   async function salin() {
@@ -89,7 +117,7 @@ export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar, slug }:
                       {p.status === "menunggu" && <span className={p.bayar ? "st st-ok" : "st st-free"} style={{ marginTop: 6 }}>{p.bayar ? "Sudah bayar" : "Belum bayar"}</span>}
                     </span>
                   </button>
-                  {p.status === "menunggu" && <button type="button" className="btn btn-sm" onClick={() => { if (p.bayar) acc(p); else { setBuka(p.id); setKonfirmasiAcc(p.id); } }}>ACC</button>}
+                  {p.status === "menunggu" && <button type="button" className="btn btn-sm" disabled={!bolehUbah || sibuk === p.id} onClick={() => { if (p.bayar) acc(p); else { setBuka(p.id); setKonfirmasiAcc(p.id); } }}>{sibuk === p.id ? "…" : "ACC"}</button>}
                   {p.status === "disetujui" && <span className="st st-ok">Disetujui</span>}
                   {p.status === "ditolak" && <span className="st st-full">Ditolak</span>}
                 </div>
@@ -106,15 +134,16 @@ export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar, slug }:
                     </dl>
                     {p.bayar ? (
                       <div className="bukti"><span className="circ"><Icon name="doc" /></span>
-                        <div className="grow"><div className="name">{p.bayar.berkas}</div><div className="meta">Ke {p.bayar.bank} · {rp(p.bayar.nominal)} · diunggah {p.bayar.diunggah}</div></div></div>
+                        <div className="grow"><div className="name">{p.bayar.berkas}</div><div className="meta">Ke {p.bayar.bank} · {rp(p.bayar.nominal)} · diunggah {p.bayar.diunggah}</div></div>{aksi?.lihatBukti && <button type="button" className="btn btn-2 btn-sm" onClick={() => bukaBukti(p)}>Lihat</button>}</div>
                     ) : p.status === "menunggu" && (
                       <p className="meta" style={{ margin: 0 }}>Belum ada bukti bayar. Murid membayar lewat halaman bayar di <b>{`/u/${slug}/bayar?kode=${p.kode}`}</b>.</p>
                     )}
                     {p.bayar && p.status === "menunggu" && <p className="meta" style={{ margin: 0 }}>Cocokkan nominal dan nama pengirim di mutasi rekening sebelum ACC.</p>}
+                    {!bolehUbah && p.status === "menunggu" && <p className="meta" style={{ margin: 0 }}>Langgananmu belum aktif, jadi hanya bisa dilihat. Perpanjang di halaman Langganan.</p>}
                     {konfirmasiAcc === p.id && (
                       <div className="aksi">
                         <span className="meta" style={{ flexBasis: "100%" }}>Belum ada bukti bayar. Tetap ACC?</span>
-                        <button type="button" className="btn btn-sm" onClick={() => acc(p)}>Ya, ACC tanpa bukti</button>
+                        <button type="button" className="btn btn-sm" disabled={!bolehUbah || sibuk === p.id} onClick={() => acc(p)}>Ya, ACC tanpa bukti</button>
                         <button type="button" className="btn btn-2 btn-sm" onClick={() => setKonfirmasiAcc(null)}>Batal</button>
                       </div>
                     )}
@@ -122,7 +151,7 @@ export function PendaftaranList({ awal, paket, promo, usaha, linkDaftar, slug }:
                       {p.status === "menunggu" && (
                         konfirmasiTolak === p.id ? (
                           <>
-                            <button type="button" className="btn btn-2 btn-sm" onClick={() => ubahStatus(p.id, "ditolak")}>Ya, tolak</button>
+                            <button type="button" className="btn btn-2 btn-sm" disabled={!bolehUbah || sibuk === p.id} onClick={() => tolak(p)}>Ya, tolak</button>
                             <button type="button" className="btn btn-2 btn-sm" onClick={() => setKonfirmasiTolak(null)}>Batal</button>
                           </>
                         ) : (

@@ -21,6 +21,7 @@ export interface AksiMurid {
   tambahCatatan: (id: string, teks: string) => Promise<{ ok: true; tgl: string; teks: string } | { ok: false; pesan: string }>;
   ubahData: (id: string, i: InputEditMurid) => Promise<{ ok: true } | { ok: false; galat: GalatMurid; pesan?: string }>;
   perpanjang: (id: string, paketId: string) => Promise<{ ok: true } | { ok: false; pesan: string }>;
+  buatLinkPortal: (id: string) => Promise<{ ok: true; token: string } | { ok: false; pesan: string }>;
 }
 
 export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehUbah = true, paketPilihan = [] }: { murid: MuridContoh; paket: Paket; usaha: string; slug: string; tokenAwal: string | null; aksi?: AksiMurid; bolehUbah?: boolean; paketPilihan?: Paket[] }) {
@@ -64,6 +65,15 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehU
   }
 
   function buatLink() {
+    if (aksi) {
+      mulai(async () => {
+        const r = await aksi.buatLinkPortal(murid.id);
+        if (!r.ok) { info(r.pesan); return; }
+        setToken(r.token); setBaru(true); setUlang(false);
+        info("Link baru dibuat. Link lama tidak berlaku lagi.");
+      });
+      return;
+    }
     setToken(buatTokenPortal()); setBaru(true); setUlang(false);
     info("Link baru dibuat. Link lama tidak berlaku lagi.");
   }
@@ -137,12 +147,6 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehU
         )}
       </section>
 
-      {aksi ? (
-        <section className="grp">
-          <h2 className="h2">Link portal murid</h2>
-          <p className="sub" style={{ margin: 0, fontSize: 13 }}>Link pribadi murid aktif setelah tahap keamanan portal selesai (token disimpan sebagai hash dan bisa dicabut).</p>
-        </section>
-      ) : (
       <section className="grp">
         <h2 className="h2">Link portal murid</h2>
         <div className="surface kartu-form">
@@ -156,17 +160,16 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehU
                   <><button type="button" className="btn btn-2 btn-sm" onClick={buatLink}>Ya, buat baru</button><button type="button" className="btn btn-2 btn-sm" onClick={() => setUlang(false)}>Batal</button></>
                 ) : <button type="button" className="btn btn-2 btn-sm" onClick={() => setUlang(true)}>Buat ulang</button>}
               </div>
-              <p className="meta" style={{ margin: 0 }}>{baru ? "Link baru ini belum aktif di halaman murid sampai database tersambung." : "Siapa pun yang memegang link ini bisa melihat data murid ini. Buat ulang bila link bocor atau murid ganti HP."}</p>
+              <p className="meta" style={{ margin: 0 }}>{aksi ? "Link ini hanya tampil sekali (di server hanya disimpan sidik jarinya). Salin atau kirim sekarang; hilang atau bocor, buat ulang." : baru ? "Link baru ini hanya simulasi di demo." : "Siapa pun yang memegang link ini bisa melihat data murid ini. Buat ulang bila link bocor atau murid ganti HP."}</p>
             </>
           ) : (
             <>
-              <p className="sub" style={{ margin: 0, fontSize: 13 }}>Murid belum punya link. Link dibuat otomatis saat pendaftaran di-ACC.</p>
+              <p className="sub" style={{ margin: 0, fontSize: 13 }}>Buat link pribadi supaya murid bisa melihat sisa sesi, jadwal, dan tagihannya.</p>
               <button type="button" className="btn btn-sm" style={{ alignSelf: "flex-start" }} onClick={buatLink}>Buat link portal</button>
             </>
           )}
         </div>
       </section>
-      )}
 
       <section className="grp">
         <h2 className="h2">Tagihan</h2>

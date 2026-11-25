@@ -19,14 +19,18 @@ export interface HasilAkses { fase: Fase; akses: Akses; sisaHari: number | null;
 
 /**
  * Akses dihitung dari tanggal setiap kali dibaca, tidak disimpan sebagai flag (pelajaran status slot).
+ * trial habis tanpa pernah bayar -> ditutup langsung (hanya halaman Langganan yang terbuka).
  * trial/aktif -> penuh (peringatan 3 hari terakhir) -> jatuh tempo (masa tenggang, penuh + peringatan)
  * -> ditangguhkan (hanya lihat dan ekspor, halaman pendaftaran publik ditutup) -> berhenti (ditutup).
  */
 export function hitungAkses(d: DataLangganan, sekarang: string): HasilAkses {
   const akhir = d.periodeBerakhir ?? d.trialBerakhir;
   if (!akhir) return { fase: "berhenti", akses: "ditutup", sisaHari: null, tenggat: null };
-  const grace = d.graceSampai ?? tambahHari(akhir, GRACE_HARI);
-  const tangguh = tambahHari(grace, TANGGUH_HARI);
+  // Pelanggan berbayar yang telat: masa tenggang 7 hari lalu hanya-lihat 30 hari. Masa percobaan yang habis (belum pernah bayar) langsung ditutup,
+  // kecuali pemilik platform memberi kelonggaran manual lewat `graceSampai`. Keputusan Ferdy 2026-11-24: lewat 7 hari trial semua dikunci kecuali halaman Langganan.
+  const pernahBayar = d.periodeBerakhir !== null;
+  const grace = d.graceSampai ?? (pernahBayar ? tambahHari(akhir, GRACE_HARI) : akhir);
+  const tangguh = pernahBayar || d.graceSampai ? tambahHari(grace, TANGGUH_HARI) : grace;
 
   if (sekarang <= akhir) {
     const sisa = selisih(sekarang, akhir);

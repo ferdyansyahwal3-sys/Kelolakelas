@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { KUNCI_INFO } from "./PemberitahuanPanel";
 import { labelInfo, untukMurid, type JenisInfo, type Pemberitahuan } from "@/lib/pemberitahuan";
 import { PageHeader } from "./PageHeader";
@@ -11,19 +11,24 @@ interface Data {
   riwayat: { tgl: string; status: "hadir" | "izin" | "alpa" }[];
   tagihan: { id: string; nominal: number; status: "lunas" | "belum" | "menunggu_verifikasi"; tempo: string }[];
   catatan: { tgl: string; teks: string }[];
-  berikutnya: { label: string; mulai: string; nama: string } | null;
+  berikutnya: { label: string; mulai: string; nama: string; slotId?: string; tanggal?: string } | null;
 }
 const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`;
 const kelasSesi = { hadir: "st st-ok", izin: "st st-few", alpa: "st st-full" } as const;
 const namaSesi = { hadir: "Hadir", izin: "Izin", alpa: "Alpa" } as const;
 const tagihanLabel = { lunas: { t: "Lunas", k: "st st-ok" }, belum: { t: "Belum bayar", k: "st st-free" }, menunggu_verifikasi: { t: "Dicek pemilik", k: "st st-few" } } as const;
 
-export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, slotIds, info }: { usaha: string; data: Data; sekarang: string; batasIzinJam: number; pengajarId: string; slotIds: string[]; info: Pemberitahuan[] }) {
+type Izin = { slug: string; token: string; kirim: (slug: string, token: string, slotId: string, tanggal: string) => Promise<{ ok: true } | { ok: false; pesan: string }> };
+
+export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, slotIds, info, izin: izinServer }: { usaha: string; data: Data; sekarang: string; batasIzinJam: number; pengajarId: string; slotIds: string[]; info: Pemberitahuan[]; /** Portal asli: izin disimpan ke database. Tanpa ini = hanya contoh. */ izin?: Izin }) {
   const [izin, setIzin] = useState(false);
+  const [galatIzin, setGalatIzin] = useState("");
+  const [kirimIzin, mulaiIzin] = useTransition();
   const [kabar, setKabar] = useState(info);
   useEffect(() => {
+    if (izinServer) return; // portal asli: info dari database
     try { const d = JSON.parse(localStorage.getItem(KUNCI_INFO) ?? "null") as Pemberitahuan[] | null; if (Array.isArray(d)) setKabar(untukMurid(d, pengajarId, slotIds, sekarang.slice(0, 10))); } catch {}
-  }, [pengajarId, slotIds, sekarang]);
+  }, [pengajarId, slotIds, sekarang, izinServer]);
   const k = ringkasKuota(data.sisa, data.total);
   const b = data.berikutnya;
   const boleh = b ? bisaAjukanIzin(b.mulai, sekarang, batasIzinJam) : false;
@@ -31,7 +36,7 @@ export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, s
 
   return (
     <div className="shell">
-      <main className="scroll" style={{ paddingTop: 20 }}>
+      <main className="scroll kolom2" style={{ paddingTop: 20 }}>
         <PageHeader title={`Halo, ${data.nama}`} eyebrow={usaha} chip={data.aktif ? `Pelatih: ${data.pengajar}` : "Paket tidak aktif"} />
 
         {kabar.length > 0 && (
@@ -61,9 +66,14 @@ export function PortalMurid({ usaha, data, sekarang, batasIzinJam, pengajarId, s
             <h2 className="h2">Sesi berikutnya</h2>
             <div className="surface kartu-form">
               <div><div className="name">{b.label}</div><div className="meta">{b.nama}</div></div>
-              {izin ? <span className="st st-few" role="status" style={{ alignSelf: "flex-start" }}>Izin diajukan, menunggu konfirmasi</span> : (
+              {izin ? <span className="st st-few" role="status" style={{ alignSelf: "flex-start" }}>Izin tercatat, pemilik akan melihatnya</span> : (
                 <>
-                  <button type="button" className="btn btn-2" disabled={!boleh} onClick={() => setIzin(true)}>Ajukan izin</button>
+                  <button type="button" className="btn btn-2" onClick={() => {
+                    if (!izinServer || !b?.slotId || !b.tanggal) { setIzin(true); return; }
+                    setGalatIzin("");
+                    mulaiIzin(async () => { const r = await izinServer.kirim(izinServer.slug, izinServer.token, b.slotId!, b.tanggal!); if (r.ok) setIzin(true); else setGalatIzin(r.pesan); });
+                  }} disabled={!boleh || kirimIzin}>{kirimIzin ? "Mengirim…" : "Ajukan izin"}</button>
+                  {galatIzin && <p className="galat" role="alert" style={{ margin: 0 }}>{galatIzin}</p>}
                   {!boleh && <p className="meta" style={{ margin: 0 }}>Izin paling lambat {batasIzinJam} jam sebelum sesi dimulai. Hubungi pelatih bila mendesak.</p>}
                 </>
               )}

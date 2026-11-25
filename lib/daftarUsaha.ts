@@ -158,6 +158,8 @@ export function tujuanSetelahMasuk(peran: PeranPengguna[], lanjut?: string | nul
   const aman = lanjutAman(lanjut);
   if (aman) {
     const path = aman.split(/[?#]/)[0]!;
+    // Tautan undangan pelatih dipakai siapa pun yang sudah masuk (termasuk yang belum punya usaha).
+    if (/^\/undang\/[A-Za-z0-9]{6,32}$/.test(path)) return aman;
     for (const r of peran) if (AWALAN_PERAN[r].some((a) => path === a || path.startsWith(a + "/"))) return aman;
   }
   if (peran.includes("owner")) return "/app";

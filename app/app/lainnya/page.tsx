@@ -20,7 +20,7 @@ export default function Lainnya() {
   return (
     <main className="scroll" style={{ paddingTop: 20 }}>
       <PageHeader title="Lainnya" icon="grid" />
-      <div className="surface">
+      <div className="surface menu-grid">
         {menu.map((m) => {
           const isi = (
             <>

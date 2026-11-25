@@ -29,5 +29,5 @@ export async function ambilKonteksOwner(): Promise<KonteksOwner | null> {
   if (!sub || !adalahPlan(sub.plan)) return null;
 
   const akses = hitungAkses(dataLangganan(t.trial_ends_at, sub.current_period_end, sub.grace_until), hariIniJakarta());
-  return { db, userId, namaPengguna: String(auth.user.user_metadata?.nama ?? "").trim() || "Pemilik", tenant: { id: t.id, nama: t.nama, slug: t.slug, jenis: t.jenis, kategori: t.kategori, tema: t.tema, istilah: t.istilah }, plan: sub.plan, akses };
+  return { db, userId, namaPengguna: String(auth.user.user_metadata?.nama ?? auth.user.user_metadata?.full_name ?? auth.user.user_metadata?.name ?? "").trim() || "Pemilik", tenant: { id: t.id, nama: t.nama, slug: t.slug, jenis: t.jenis, kategori: t.kategori, tema: t.tema, istilah: t.istilah }, plan: sub.plan, akses };
 }

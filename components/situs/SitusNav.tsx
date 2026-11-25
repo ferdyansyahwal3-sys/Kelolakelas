@@ -1,4 +1,5 @@
 "use client";
+import { LogoK } from "@/components/LogoK";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -25,7 +26,7 @@ export function SitusNav({ aktif, promo, landing = false }: { aktif?: "harga"; p
     <header className="s-nav">
       <div className="s-nav-dalam">
         <Link href="/" className="s-logo" aria-label="KelolaKelas, ke beranda">
-          <span className="s-logo-tanda" aria-hidden="true" />
+          <LogoK className="s-logo-k" />
           <span>KelolaKelas</span>
         </Link>
         <nav className="s-nav-link" aria-label="Menu utama">

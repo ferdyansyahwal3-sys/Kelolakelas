@@ -1,4 +1,5 @@
 "use client";
+import { LogoK } from "@/components/LogoK";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/Icon";
@@ -20,7 +21,7 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="plat">
       <aside className="plat-side" aria-label="Menu platform">
-        <div className="plat-brand"><span className="avatar s" aria-hidden="true">KK</span><div><b>KelolaKelas</b><span className="meta" style={{ display: "block" }}>Pemilik platform</span></div></div>
+        <div className="plat-brand"><LogoK className="plat-logo" /><div><b>KelolaKelas</b><span className="meta" style={{ display: "block" }}>Pemilik platform</span></div></div>
         <nav className="plat-nav">
           {NAV.map((n) => <Link key={n.href} href={n.href} aria-current={aktif(n) ? "page" : undefined}><Icon name={n.icon} />{n.label}</Link>)}
         </nav>

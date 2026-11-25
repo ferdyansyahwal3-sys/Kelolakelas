@@ -1,45 +1,29 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PortalMurid } from "@/components/PortalMurid";
-import { aturanUntuk } from "@/lib/pengaturan";
-import { untukMurid } from "@/lib/pemberitahuan";
-import { muridContoh, paketContoh, pemberitahuanContoh, pengajarContoh, pesertaTetapContoh, SEKARANG_CONTOH, sesiBerikutnyaContoh, tenantContoh, tokenPortalContoh } from "@/lib/contoh";
-import { tokenValid } from "@/lib/portal";
+import { muatPortal } from "@/lib/supabase/portalData";
+import { ajukanIzin } from "./actions";
+
+export const dynamic = "force-dynamic"; // halaman pribadi: tidak pernah di-cache
 
 export const metadata: Metadata = { title: "Portal murid", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
-export default function Portal({ params }: { params: { slug: string; token: string } }) {
-  // Token tidak valid dan token tidak dikenal sama-sama 404, supaya tidak bisa dipakai menebak.
-  if (!tokenValid(params.token)) notFound();
-  const muridId = Object.keys(tokenPortalContoh).find((id) => tokenPortalContoh[id] === params.token);
-  const m = muridContoh.find((x) => x.id === muridId);
-  if (!m || params.slug !== tenantContoh.slug) notFound();
-  const paket = paketContoh.find((p) => p.id === m.paketId);
-  const pengajarId = pengajarContoh.find((x) => x.nama === m.pengajar)?.id ?? "";
-  const slotIds = Object.keys(pesertaTetapContoh).filter((sid) => pesertaTetapContoh[sid]!.includes(m.id));
+export default async function Portal({ params }: { params: { slug: string; token: string } }) {
+  // Token tidak valid, tak dikenal, dicabut, atau milik usaha lain sama-sama 404, supaya tidak bisa dipakai menebak.
+  const p = await muatPortal(params.slug, params.token);
+  if (!p) notFound();
 
   // Hanya data murid ini yang dikirim ke browser. Nomor WA dan data murid lain tidak ikut.
   return (
     <PortalMurid
-      usaha={tenantContoh.nama}
-      data={{
-        nama: m.nama.split(" ")[0]!,
-        pengajar: m.pengajar,
-        paket: paket?.nama ?? "-",
-        sisa: m.sisaSesi,
-        total: m.totalSesi,
-        berlakuSampai: m.berlakuSampai,
-        aktif: m.aktif,
-        riwayat: m.riwayat,
-        tagihan: m.tagihan,
-        catatan: m.catatan,
-        berikutnya: sesiBerikutnyaContoh[m.id] ?? null,
-      }}
-      sekarang={SEKARANG_CONTOH}
-      batasIzinJam={aturanUntuk("Renang").batasIzinJam}
-      pengajarId={pengajarId}
-      slotIds={slotIds}
-      info={untukMurid(pemberitahuanContoh, pengajarId, slotIds)}
+      usaha={p.usaha}
+      data={p.data}
+      sekarang={p.sekarang}
+      batasIzinJam={p.batasIzinJam}
+      pengajarId={p.pengajarId}
+      slotIds={p.slotIds}
+      info={p.info}
+      izin={{ slug: params.slug, token: params.token, kirim: ajukanIzin }}
     />
   );
 }

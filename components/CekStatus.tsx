@@ -11,7 +11,7 @@ export function CekStatus({ slug }: { slug: string }) {
 
   return (
     <>
-      <form className="surface kartu-form" onSubmit={(e) => { e.preventDefault(); mulai(async () => setHasil(await cariStatus(teks))); }} noValidate>
+      <form className="surface kartu-form" onSubmit={(e) => { e.preventDefault(); mulai(async () => setHasil(await cariStatus(slug, teks))); }} noValidate>
         <label className="field"><span className="label l2">Kode pendaftaran atau nomor WhatsApp</span>
           <input value={teks} onChange={(e) => { setTeks(e.target.value); setHasil(null); }} placeholder="G473FN atau 08123456789" autoCapitalize="characters" spellCheck={false} /></label>
         <button type="submit" className="btn" disabled={sibuk || teks.trim() === ""}>{sibuk ? "Mencari…" : "Cek status"}</button>

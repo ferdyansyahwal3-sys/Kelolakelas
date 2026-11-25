@@ -5,7 +5,7 @@ import { supabaseTersambung } from "@/lib/supabase/env";
 import { adalahJenis } from "@/lib/paketLangganan";
 import { bacaJalurBayar } from "@/lib/daftarUsaha";
 
-export const metadata: Metadata = { title: "Daftar usaha · KelolaKelas", robots: { index: false } };
+export const metadata: Metadata = { title: "Buat akun · KelolaKelas", robots: { index: false } };
 
 export default async function DaftarUsaha({ searchParams }: { searchParams: { jenis?: string; paket?: string; bayar?: string; periode?: string } }) {
   const tersambung = supabaseTersambung();
@@ -15,7 +15,7 @@ export default async function DaftarUsaha({ searchParams }: { searchParams: { je
     const { data } = await klienServer().auth.getUser();
     if (data.user) {
       sudahMasuk = true;
-      nama = String(data.user.user_metadata?.nama ?? "");
+      nama = String(data.user.user_metadata?.nama ?? data.user.user_metadata?.full_name ?? data.user.user_metadata?.name ?? "");
     }
   }
   // Dari halaman Harga: ?jenis= hanya prefilter (divalidasi). ?paket= diabaikan: plan awal trial tetap paket terendah jenisnya.

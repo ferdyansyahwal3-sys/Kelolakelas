@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { kirimPendaftaran } from "@/app/u/[slug]/daftar/actions";
+import { cekKodePromo, kirimPendaftaran } from "@/app/u/[slug]/daftar/actions";
 import { Icon } from "./Icon";
 import { ThemeToggle } from "./ThemeToggle";
 import { cariPromo, hitungTotal } from "@/lib/harga";
@@ -13,15 +13,17 @@ interface Paket { id: string; nama: string; kategori: string; harga: number; cat
 interface Promo { kode: string; jenis: "persen" | "nominal"; nilai: number }
 interface Props {
   slug: string;
-  slot: { id: string; jam: string; nama: string; hari: string; pengajar: string };
+  slot: { id: string; jam: string; nama: string; hari: string; pengajar: string; tanggal?: string };
   paket: Paket[];
   promo: Promo[];
   aturan: string[];
+  /** true = kode promo diperiksa di server (data nyata); false = daftar `promo` lokal (demo/contoh). */
+  promoServer?: boolean;
 }
 
 const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`;
 
-export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
+export function DaftarWizard({ slug, slot, paket, promo, aturan, promoServer = false }: Props) {
   const [langkah, setLangkah] = useState<2 | 3>(2);
   const [syarat, setSyarat] = useState(aturan);
   useEffect(() => {
@@ -61,16 +63,19 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan }: Props) {
   }
 
   function pakaiPromo() {
-    const p = cariPromo(kode, promo);
-    setPromoAktif(p);
-    setPesanPromo(kode.trim() === "" ? "" : p ? "Kode dipakai." : "Kode tidak ditemukan.");
+    if (kode.trim() === "") { setPromoAktif(null); setPesanPromo(""); return; }
+    mulai(async () => {
+      const p = promoServer ? await cekKodePromo(slug, kode) : cariPromo(kode, promo);
+      setPromoAktif(p);
+      setPesanPromo(p ? "Kode dipakai." : "Kode tidak ditemukan atau sudah tidak berlaku.");
+    });
   }
 
   function kirim() {
     setPesan("");
     mulai(async () => {
-      const r = await kirimPendaftaran({
-        slotId: slot.id, paketId: terpilih?.id ?? "", kategori, nama,
+      const r = await kirimPendaftaran(slug, {
+        slotId: slot.id, tanggal: slot.tanggal, paketId: terpilih?.id ?? "", kategori, nama,
         usia: usia ? Number(usia) : undefined, namaOrtu, noWa,
         kodePromo: promoAktif?.kode, setuju,
       });

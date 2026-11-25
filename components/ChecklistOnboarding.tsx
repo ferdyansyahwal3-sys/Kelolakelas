@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { hitungChecklist, type DataOnboarding } from "@/lib/onboarding";
 
-interface Props { awal: Omit<DataOnboarding, "linkDibagikan"> }
+interface Props { awal: Omit<DataOnboarding, "linkDibagikan">; /** Panel asli: profil dan rekening datang dari database, bukan dari localStorage perangkat. */ dariServer?: boolean }
 const KUNCI = "kk-onboarding";
 
 /** Checklist hanya tampil sampai semua langkah beres atau pemilik menyembunyikannya. Profil dan rekening dibaca dari Pengaturan di perangkat ini. */
-export function ChecklistOnboarding({ awal }: Props) {
+export function ChecklistOnboarding({ awal, dariServer = false }: Props) {
   const [d, setD] = useState<DataOnboarding>({ ...awal, linkDibagikan: false });
   const [tutup, setTutup] = useState(false);
   const [buka, setBuka] = useState(false);
@@ -19,11 +19,11 @@ export function ChecklistOnboarding({ awal }: Props) {
     try {
       const p = JSON.parse(localStorage.getItem("kk-pengaturan") ?? "null") as { profil?: DataOnboarding["profil"]; rekening?: unknown[] } | null;
       const o = JSON.parse(localStorage.getItem(KUNCI) ?? "null") as { link?: boolean; tutup?: boolean } | null;
-      setD((x) => ({ ...x, profil: p?.profil && typeof p.profil.nama === "string" ? { nama: p.profil.nama, kategori: p.profil.kategori ?? "", kota: p.profil.kota ?? "", slug: p.profil.slug ?? "" } : x.profil, rekening: Array.isArray(p?.rekening) ? p!.rekening!.length : x.rekening, linkDibagikan: !!o?.link }));
+      setD((x) => ({ ...x, profil: !dariServer && p?.profil && typeof p.profil.nama === "string" ? { nama: p.profil.nama, kategori: p.profil.kategori ?? "", kota: p.profil.kota ?? "", slug: p.profil.slug ?? "" } : x.profil, rekening: !dariServer && Array.isArray(p?.rekening) ? p!.rekening!.length : x.rekening, linkDibagikan: !!o?.link }));
       setTutup(!!o?.tutup);
     } catch {}
     setSiap(true);
-  }, []);
+  }, [dariServer]);
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 3000); return () => clearTimeout(t); }, [toast]);
 

@@ -26,6 +26,9 @@ interface Props {
   hariIni: string;
   absensiAwal: Absensi;
   pengajar: { id: string; nama: string }[];
+  /** Panel asli: absen dan catatan disimpan ke database. Tanpa ini = hanya lokal (demo). */
+  aksiAbsen?: (jadwalId: string, tanggal: string, muridId: string, status: StatusAbsen | null) => Promise<{ ok: true } | { ok: false; pesan: string }>;
+  aksiCatatan?: (muridId: string, teks: string) => Promise<{ ok: true } | { ok: false; pesan: string }>;
 }
 
 const PILIHAN: { status: StatusAbsen; label: string }[] = [
@@ -35,7 +38,7 @@ const PILIHAN: { status: StatusAbsen; label: string }[] = [
 ];
 const STATUS_TUKAR = { menunggu: "Menunggu persetujuan pemilik", disetujui: "Disetujui", ditolak: "Ditolak", dibatalkan: "Pindah dibatalkan pemilik" } as const;
 
-export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, hariIni, absensiAwal, pengajar }: Props) {
+export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, hariIni, absensiAwal, pengajar, aksiAbsen, aksiCatatan }: Props) {
   const [mode, setMode] = useState<"hari" | "minggu">("hari");
   const [tanggal, setTanggal] = useState(hariIni);
   const [kead, setKead] = useState<Keadaan>({ absensi: absensiAwal, pengganti: [] });
@@ -60,8 +63,10 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
     try {
       const d = JSON.parse(localStorage.getItem("kk-pengaturan") ?? "null") as { aturan?: { sesiPengganti?: unknown } } | null;
       if (typeof d?.aturan?.sesiPengganti === "boolean") setAturanPengganti(d.aturan.sesiPengganti);
-      const c = JSON.parse(localStorage.getItem(KUNCI_CATATAN) ?? "null") as Catatan | null;
-      if (c && typeof c === "object" && !Array.isArray(c)) setCatatan(c);
+      if (!aksiCatatan) {
+        const c = JSON.parse(localStorage.getItem(KUNCI_CATATAN) ?? "null") as Catatan | null;
+        if (c && typeof c === "object" && !Array.isArray(c)) setCatatan(c);
+      }
       const g = JSON.parse(localStorage.getItem(KUNCI_GANTI) ?? "null") as GantiPelatih[] | null;
       if (Array.isArray(g)) setGantiList(g.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggal === "string" && typeof x.pelatihId === "string"));
       const q = JSON.parse(localStorage.getItem(KUNCI_MINTA) ?? "null") as PermintaanGanti[] | null;
@@ -71,7 +76,7 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
       const pj = JSON.parse(localStorage.getItem(KUNCI_PINDAH) ?? "null") as PindahJadwal[] | null;
       if (Array.isArray(pj)) setPindah(pj.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggalAsal === "string" && typeof x.tanggalBaru === "string" && typeof x.jamBaru === "string"));
     } catch {}
-  }, []);
+  }, [aksiCatatan]);
 
   useEffect(() => {
     if (!toast) return;
@@ -93,22 +98,53 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
   function info(teks: string, galat = false) { setToast({ teks, galat }); }
   const simpanLokal = (kunci: string, nilai: unknown) => { try { localStorage.setItem(kunci, JSON.stringify(nilai)); } catch {} };
 
-  function ketuk(kunci: string, status: StatusAbsen) {
-    const h = tandai(k, kead, kunci, status);
-    if (h.ok) { setKead(h.keadaan); info(h.pesan); } else info(h.galat, true);
+  const [menyimpan, setMenyimpan] = useState(false);
+
+  /** Simpan selisih absen ke database (hanya peserta tetap). Mengembalikan galat pertama bila ada. */
+  async function simpanSelisih(sebelum: Absensi, sesudah: Absensi): Promise<string | null> {
+    if (!aksiAbsen) return null;
+    const kunciSemua = new Set([...Object.keys(sebelum), ...Object.keys(sesudah)]);
+    for (const kunci of Array.from(kunciSemua)) {
+      if (sebelum[kunci] === sesudah[kunci]) continue;
+      const [slotId, tgl, muridId] = kunci.split("|") as [string, string, string];
+      if (!(pesertaTetap[slotId] ?? []).includes(muridId)) continue;
+      const r = await aksiAbsen(slotId, tgl, muridId, sesudah[kunci] ?? null);
+      if (!r.ok) return r.pesan;
+    }
+    return null;
   }
 
-  function hadirSemua(sesi: ReturnType<typeof sesiDi>[number]) {
+  async function ketuk(kunci: string, status: StatusAbsen) {
+    if (menyimpan) return;
+    const h = tandai(k, kead, kunci, status);
+    if (!h.ok) { info(h.galat, true); return; }
+    setMenyimpan(true);
+    const galat = await simpanSelisih(kead.absensi, h.keadaan.absensi);
+    setMenyimpan(false);
+    if (galat) { info(galat, true); return; }
+    setKead(h.keadaan); info(h.pesan);
+  }
+
+  async function hadirSemua(sesi: ReturnType<typeof sesiDi>[number]) {
+    if (menyimpan) return;
     const h = tandaiSemuaHadir(k, kead, sesi);
+    setMenyimpan(true);
+    const galat = await simpanSelisih(kead.absensi, h.keadaan.absensi);
+    setMenyimpan(false);
+    if (galat) { info(galat, true); return; }
     setKead(h.keadaan);
     info(h.pesan, h.berhasil === 0 && h.dilewati.length > 0);
   }
 
-  function simpanCatatan(muridId: string) {
+  async function simpanCatatan(muridId: string) {
     const h = validasiCatatan(teksCatatan);
     if (!h.ok) { setGalatCatatan(h.galat); return; }
+    if (aksiCatatan) {
+      const r = await aksiCatatan(muridId, h.teks);
+      if (!r.ok) { setGalatCatatan(r.pesan); return; }
+    }
     const baru = { ...catatan, [muridId]: [{ tgl: tglPendek(hariIni), teks: h.teks }, ...(catatan[muridId] ?? [])] };
-    setCatatan(baru); simpanLokal(KUNCI_CATATAN, baru);
+    setCatatan(baru); if (!aksiCatatan) simpanLokal(KUNCI_CATATAN, baru);
     setTeksCatatan(""); setGalatCatatan(""); setBukaCatatan(null);
     info(`Catatan untuk ${muridMap[muridId]?.nama ?? "murid"} disimpan.`);
   }

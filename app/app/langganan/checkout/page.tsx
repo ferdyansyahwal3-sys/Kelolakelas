@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { ambilKonteksOwner } from "@/lib/supabase/konteks";
 import { bacaJalurBayar } from "@/lib/daftarUsaha";
-import { PAKET, hargaPeriode, labelPlan, rupiah } from "@/lib/paketLangganan";
+import { PAKET, PROMO_PELANGGAN, hargaPeriode, labelPlan, rupiah } from "@/lib/paketLangganan";
 import { tglPendek } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Pembayaran · KelolaKelas", robots: { index: false } };
@@ -20,7 +20,7 @@ export default async function BayarPaket({ searchParams }: { searchParams: { pak
   const j = bacaJalurBayar({ bayar: "1", paket: searchParams.paket, periode: searchParams.periode });
   if (!j || j.jenis !== k.tenant.jenis) redirect("/app/langganan");
 
-  const h = hargaPeriode(j.plan, j.periode, Date.now());
+  const h = hargaPeriode(j.plan, j.periode, Date.now(), PROMO_PELANGGAN);
   const def = PAKET[j.plan];
   return (
     <main className="scroll" style={{ paddingTop: 20 }}>
@@ -46,8 +46,7 @@ export default async function BayarPaket({ searchParams }: { searchParams: { pak
         <button type="button" className="btn" disabled aria-disabled="true">Bayar sekarang · segera tersedia</button>
       </section>
 
-      <Link href="/app" className="btn btn-2">Buka dashboard</Link>
-      <Link href="/harga" className="link" style={{ alignSelf: "center" }}>Ganti paket</Link>
+      <Link href="/app/langganan/pilih" className="btn btn-2">Ubah paket</Link>
     </main>
   );
 }

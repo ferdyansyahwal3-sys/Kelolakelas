@@ -9,21 +9,24 @@ import type { MuridContoh } from "@/lib/contoh";
 import type { TagihanOwner } from "@/lib/tagihan";
 
 const KUNCI = "kk-pengaturan";
-interface Props { awal: Pengaturan; murid: MuridContoh[]; tagihan: TagihanOwner[] }
+type HasilSimpan = { ok: true } | { ok: false; pesan: string; galat?: Galat };
+interface Props { awal: Pengaturan; murid: MuridContoh[]; tagihan: TagihanOwner[]; /** Panel asli: simpan ke database. Tanpa ini = hanya di perangkat (demo). */ simpan?: (p: Pengaturan) => Promise<HasilSimpan> }
 
-export function PengaturanForm({ awal, murid, tagihan }: Props) {
+export function PengaturanForm({ awal, murid, tagihan, simpan: simpanServer }: Props) {
   const [p, setP] = useState(awal);
   const [tersimpan, setTersimpan] = useState(awal);
   const [galat, setGalat] = useState<Galat>({});
   const [toast, setToast] = useState("");
   const [tersalin, setTersalin] = useState(false);
+  const [sibuk, setSibuk] = useState(false);
 
   useEffect(() => {
+    if (simpanServer) return; // panel asli: nilai awal dari database
     try {
       const raw = localStorage.getItem(KUNCI);
       if (raw) { const d = JSON.parse(raw) as Pengaturan; const gab = { ...awal, ...d, aturan: { ...awal.aturan, ...d.aturan }, rekening: Array.isArray(d.rekening) ? d.rekening : [] }; setP(gab); setTersimpan(gab); }
     } catch {}
-  }, [awal]);
+  }, [awal, simpanServer]);
 
   const berubah = JSON.stringify(p) !== JSON.stringify(tersimpan);
   const link = `kelolakelas.id/u/${p.profil.slug || "…"}`;
@@ -35,10 +38,20 @@ export function PengaturanForm({ awal, murid, tagihan }: Props) {
     bersih(kunci);
   }
 
-  function simpan() {
+  async function simpan() {
+    if (sibuk) return;
     const g = validasiPengaturan(p);
     setGalat(g);
     if (Object.keys(g).length > 0) { info("Ada isian yang perlu dibenahi."); return; }
+    if (simpanServer) {
+      setSibuk(true);
+      const r = await simpanServer(p);
+      setSibuk(false);
+      if (!r.ok) { if (r.galat) setGalat(r.galat); info(r.pesan); return; }
+      setTersimpan(p);
+      info("Pengaturan disimpan.");
+      return;
+    }
     try { localStorage.setItem(KUNCI, JSON.stringify(p)); } catch {}
     setTersimpan(p);
     info("Pengaturan disimpan di perangkat ini.");
@@ -78,6 +91,10 @@ export function PengaturanForm({ awal, murid, tagihan }: Props) {
             </select></label>
           <label className="field"><span className="label l2">Kota</span>
             <input value={p.profil.kota} onChange={(e) => ubah("profil", { kota: e.target.value }, "profil.kota")} /><E k="profil.kota" /></label>
+          <label className="field"><span className="label l2">Area / lokasi latihan (tampil di halaman murid)</span>
+            <input value={p.profil.area ?? ""} onChange={(e) => ubah("profil", { area: e.target.value }, "profil.area")} placeholder="Kolam A dan B, Bekasi" /><E k="profil.area" /></label>
+          <label className="field"><span className="label l2">Nomor WhatsApp usaha (untuk tombol Chat WA)</span>
+            <input value={p.profil.noWa ?? ""} onChange={(e) => ubah("profil", { noWa: e.target.value }, "profil.noWa")} inputMode="tel" placeholder="0812xxxxxxxx" /><E k="profil.noWa" /></label>
           <label className="field"><span className="label l2">Deskripsi singkat ({p.profil.deskripsi.length}/280)</span>
             <textarea rows={3} value={p.profil.deskripsi} onChange={(e) => ubah("profil", { deskripsi: e.target.value }, "profil.deskripsi")} /><E k="profil.deskripsi" /></label>
           <label className="field"><span className="label l2">Alamat link pendaftaran</span>
@@ -191,7 +208,7 @@ export function PengaturanForm({ awal, murid, tagihan }: Props) {
       </section>
 
       <div className="simpan">
-        <button type="button" className="btn" disabled={!berubah} onClick={simpan}>{berubah ? "Simpan perubahan" : "Tersimpan"}</button>
+        <button type="button" className="btn" disabled={!berubah || sibuk} onClick={simpan}>{sibuk ? "Menyimpan…" : berubah ? "Simpan perubahan" : "Tersimpan"}</button>
         <p className="meta" style={{ margin: 0, textAlign: "center" }}>Sementara disimpan di perangkat ini, sampai database tersambung.</p>
       </div>
       {toast && <div className="toast" role="status">{toast}</div>}

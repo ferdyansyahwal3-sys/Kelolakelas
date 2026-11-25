@@ -1,22 +1,30 @@
-import { HanyaAsli } from "@/components/BasisApp";
+import { redirect } from "next/navigation";
+import { Tautan } from "@/components/BasisApp";
+import { Icon } from "@/components/Icon";
 import { PageHeader } from "@/components/PageHeader";
 import { PelatihApp } from "@/components/PelatihApp";
 import { TombolKeluar } from "@/components/TombolKeluar";
-import { absensiAwalContoh, bagiHasilContoh, bagiNominalContoh, gajiDibayarContoh, HARI_INI, jadwalContoh, muridContoh, pembayaranContoh, pemberitahuanContoh, pengajarContoh, pesertaTetapContoh } from "@/lib/contoh";
+import { hariIniJakarta } from "@/lib/langgananData";
 import { labelTanggal } from "@/lib/sesi";
+import { ambilKonteksPelatih, muatDataPelatih } from "@/lib/supabase/pelatihData";
+import { absenPelatih, catatanPelatih, hapusInfoPelatih, kirimInfoPelatih } from "./actions";
 
-const SAYA = { id: "riska", nama: "Coach Riska" };
+export default async function HalamanPelatih() {
+  const k = await ambilKonteksPelatih();
+  if (!k) redirect("/masuk?lanjut=/pengajar");
+  const hariIni = hariIniJakarta();
+  const d = await muatDataPelatih(k, hariIni);
+  const murid = d.murid.map((m) => ({ id: m.id, nama: m.nama, kategori: m.kategori, sisaSesi: m.sisaSesi, totalSesi: m.totalSesi, berlakuSampai: m.berlakuSampai, aktif: m.aktif, bayar: m.bayar }));
 
-export default function HalamanPelatih() {
-  const murid = muridContoh.map((m) => ({ id: m.id, nama: m.nama, kategori: m.kategori, sisaSesi: m.sisaSesi, totalSesi: m.totalSesi, berlakuSampai: m.berlakuSampai, aktif: m.aktif, bayar: m.bayar }));
-  const catatanAwal = Object.fromEntries(muridContoh.filter((m) => m.catatan.length > 0).map((m) => [m.id, m.catatan]));
   return (
     <div className="shell has-nav">
+      {k.pemilik && <Tautan href="/app" className="side-balik" title="Kembali ke panel owner"><Icon name="home" /><span>Panel owner</span></Tautan>}
       <main className="scroll" style={{ paddingTop: 20 }}>
-        <PageHeader title="Jadwal saya" icon="coach" chip={`${SAYA.nama} · ${labelTanggal(HARI_INI)}`} />
-        <PelatihApp saya={SAYA} hariIni={HARI_INI} jadwal={jadwalContoh} pesertaTetap={pesertaTetapContoh} murid={murid} catatanAwal={catatanAwal} absensiAwal={absensiAwalContoh}
-          pemberitahuan={pemberitahuanContoh} pengajar={pengajarContoh} pembayaran={pembayaranContoh} persenAwal={bagiHasilContoh[SAYA.id] ?? 0} nominalAwal={bagiNominalContoh[SAYA.id] ?? 0} dibayarAwal={gajiDibayarContoh} />
-        <HanyaAsli><TombolKeluar /></HanyaAsli>
+        <PageHeader title="Jadwal saya" back={k.pemilik ? "/app" : undefined} chip={`${k.nama} · ${labelTanggal(hariIni)}`} />
+        <PelatihApp saya={{ id: k.pengajarId, nama: k.nama }} hariIni={hariIni} jadwal={d.jadwal} pesertaTetap={d.pesertaTetap} murid={murid} catatanAwal={d.catatan} absensiAwal={d.absensi}
+          pemberitahuan={d.pemberitahuan} pengajar={d.pengajar} pembayaran={d.pembayaran} persenAwal={d.persen} nominalAwal={d.nominal} dibayarAwal={d.gajiDibayar} modeBagi={d.modeBagi}
+          aksi={k.bolehUbah ? { absen: absenPelatih, catatan: catatanPelatih, kirimInfo: kirimInfoPelatih, hapusInfo: hapusInfoPelatih } : undefined} />
+        <TombolKeluar />
       </main>
     </div>
   );

@@ -10,7 +10,7 @@ export default function DetailMuridDemo({ params }: { params: { id: string } }) 
   if (!murid || !paket) notFound();
 
   return (
-    <main className="scroll" style={{ paddingTop: 20 }}>
+    <main className="scroll kolom2" style={{ paddingTop: 20 }}>
       <PageHeader title="Detail murid" back="/app/murid" />
       <MuridDetail murid={murid} paket={paket} usaha={tenantContoh.nama} slug={tenantContoh.slug} tokenAwal={tokenPortalContoh[murid.id] ?? null} />
     </main>

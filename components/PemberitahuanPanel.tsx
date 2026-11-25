@@ -7,7 +7,9 @@ import { tglPendek } from "@/lib/format";
 export const KUNCI_INFO = "kk-pemberitahuan";
 export const KUNCI_KABAR = "kk-kabar-pelatih";
 interface SlotInfo { id: string; pengajarId: string; hari: number; jam: string; nama: string }
-interface Props { awal: Pemberitahuan[]; pengajar: { id: string; nama: string }[]; peran: Peran; saya: { id: string | null; nama: string }; hariIni: string; jadwal?: SlotInfo[]; onKabarUbah?: (belumDibaca: number) => void }
+type HasilKirimInfo = { ok: true; info: Pemberitahuan } | { ok: false; pesan: string; galat?: Record<string, string> };
+export interface AksiInfo { kirim: (i: { jenis: JenisInfo; judul: string; isi: string; target: string; slotId: string }) => Promise<HasilKirimInfo>; hapus: (id: string) => Promise<{ ok: true } | { ok: false; pesan: string }> }
+interface Props { awal: Pemberitahuan[]; pengajar: { id: string; nama: string }[]; peran: Peran; saya: { id: string | null; nama: string }; hariIni: string; jadwal?: SlotInfo[]; onKabarUbah?: (belumDibaca: number) => void; aksi?: AksiInfo }
 const HARI = ["", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 const kelas: Record<JenisInfo, string> = { umum: "st st-ok", tidak_hadir: "st st-full", aturan: "st st-few" };
 const kelasKabar: Record<JenisKabar, string> = { ganti_disetujui: "st st-ok", ganti_masuk: "st st-few", ganti_ditolak: "st st-full", tukar_disetujui: "st st-ok", tukar_ditolak: "st st-full", tukar_dibatalkan: "st st-few", ganti_langsung: "st st-few" };
@@ -20,7 +22,7 @@ export function bacaKabar(): KabarPelatih[] {
   } catch { return []; }
 }
 
-export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwal = [], onKabarUbah }: Props) {
+export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwal = [], onKabarUbah, aksi }: Props) {
   const [daftar, setDaftar] = useState(awal);
   const [kabar, setKabar] = useState<KabarPelatih[]>([]);
   const [form, setForm] = useState({ jenis: "umum" as JenisInfo, judul: "", isi: "", target: peran === "pelatih" ? (saya.id ?? "") : "semua", slotId: "" });
@@ -31,9 +33,9 @@ export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwa
   const [toast, setToast] = useState("");
 
   useEffect(() => {
-    try { const d = JSON.parse(localStorage.getItem(KUNCI_INFO) ?? "null") as Pemberitahuan[] | null; if (Array.isArray(d)) setDaftar(d); } catch {}
+    if (!aksi) { try { const d = JSON.parse(localStorage.getItem(KUNCI_INFO) ?? "null") as Pemberitahuan[] | null; if (Array.isArray(d)) setDaftar(d); } catch {} }
     setKabar(bacaKabar());
-  }, []);
+  }, [aksi]);
 
   const kabarSaya = peran === "pelatih" && saya.id ? kabarUntuk(kabar, saya.id) : [];
   const baru = peran === "pelatih" && saya.id ? belumDibaca(kabar, saya.id) : 0;
@@ -43,12 +45,12 @@ export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwa
     if (saya.id) onKabarUbah?.(belumDibaca(d, saya.id));
   }
 
-  const simpanLokal = (d: Pemberitahuan[]) => { try { localStorage.setItem(KUNCI_INFO, JSON.stringify(d)); } catch {} };
+  const simpanLokal = (d: Pemberitahuan[]) => { if (aksi) return; try { localStorage.setItem(KUNCI_INFO, JSON.stringify(d)); } catch {} };
   const info = (t: string) => { setToast(t); setTimeout(() => setToast(""), 3500); };
   const bersih = (k: string) => setGalat((g) => { const n = { ...g }; delete n[k]; return n; });
   const tujuan = (p: Pemberitahuan) => (p.untukSlotId ? `Murid sesi ${(() => { const x = jadwal.find((j) => j.id === p.untukSlotId); return x ? `${HARI[x.hari]} ${x.jam} ${x.nama}` : "tertentu"; })()}` : p.untukPengajarId === null ? "Semua murid" : `Murid ${pengajar.find((x) => x.id === p.untukPengajarId)?.nama ?? ""}`);
 
-  function kirim() {
+  async function kirim() {
     const g = validasiPemberitahuan(form);
     const sesi = form.target === "sesi";
     const target = form.target === "semua" || sesi ? null : form.target;
@@ -59,7 +61,12 @@ export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwa
     } else if (!targetDiizinkan(peran, saya.id, target)) g.target = "Kamu hanya bisa menulis untuk muridmu sendiri.";
     setGalat(g);
     if (Object.keys(g).length > 0) return;
-    const baru: Pemberitahuan = { id: `info-${Date.now()}`, jenis: form.jenis, judul: form.judul.trim(), isi: form.isi.trim(), penulis: saya.nama, untukPengajarId: target, ...(slot ? { untukSlotId: slot.id } : {}), tgl: hariIni };
+    let baru: Pemberitahuan = { id: `info-${Date.now()}`, jenis: form.jenis, judul: form.judul.trim(), isi: form.isi.trim(), penulis: saya.nama, untukPengajarId: target, ...(slot ? { untukSlotId: slot.id } : {}), tgl: hariIni };
+    if (aksi) {
+      const r = await aksi.kirim({ jenis: form.jenis, judul: form.judul, isi: form.isi, target: form.target, slotId: form.slotId });
+      if (!r.ok) { if (r.galat) setGalat(r.galat); info(r.pesan); return; }
+      baru = r.info;
+    }
     const d = [baru, ...daftar];
     setDaftar(d); simpanLokal(d);
     setForm({ ...form, judul: "", isi: "", slotId: "" });
@@ -129,7 +136,7 @@ export function PemberitahuanPanel({ awal, pengajar, peran, saya, hariIni, jadwa
                 <div className="name" style={{ whiteSpace: "normal" }}>{p.judul}</div>
                 <div className="sub" style={{ fontSize: 13 }}>{p.isi}</div>
                 {(peran === "owner" || p.penulis === saya.nama) && (hapus === p.id
-                  ? <div className="aksi"><button type="button" className="btn btn-2 btn-sm" onClick={() => { const d = daftar.filter((x) => x.id !== p.id); setDaftar(d); simpanLokal(d); setHapus(null); info("Pemberitahuan dihapus."); }}>Ya, hapus</button><button type="button" className="btn btn-2 btn-sm" onClick={() => setHapus(null)}>Batal</button></div>
+                  ? <div className="aksi"><button type="button" className="btn btn-2 btn-sm" onClick={async () => { if (aksi) { const r = await aksi.hapus(p.id); if (!r.ok) { info(r.pesan); return; } } const d = daftar.filter((x) => x.id !== p.id); setDaftar(d); simpanLokal(d); setHapus(null); info("Pemberitahuan dihapus."); }}>Ya, hapus</button><button type="button" className="btn btn-2 btn-sm" onClick={() => setHapus(null)}>Batal</button></div>
                   : <button type="button" className="btn btn-2 btn-sm" onClick={() => setHapus(p.id)}><Icon name="x" />Hapus</button>)}
               </div>
             ))}

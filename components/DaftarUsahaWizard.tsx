@@ -1,4 +1,5 @@
 "use client";
+import { LogoK } from "@/components/LogoK";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -6,7 +7,9 @@ import { buatAkun, buatUsaha, cekAlamat } from "@/app/daftar-usaha/actions";
 import { keluar } from "@/app/masuk/actions";
 import { Icon } from "./Icon";
 import { KotaCombobox } from "./KotaCombobox";
-import { TombolMata } from "./TombolMata";
+import { TombolGoogle } from "./TombolGoogle";
+import { PanelAuth } from "./PanelAuth";
+import { SelesaiAuth } from "./SelesaiAuth";
 import { ThemeToggle } from "./ThemeToggle";
 import { DAFTAR_JENIS, INFO_JENIS, KATEGORI, SANDI_MIN, slugDariNama, validasiAkun, validasiUsaha, type Galat, type JalurBayar, type Jenis } from "@/lib/daftarUsaha";
 import { TAHUNAN_BULAN, TAHUNAN_BULAN_BAYAR, TRIAL_HARI, labelPlan } from "@/lib/paketLangganan";
@@ -54,6 +57,7 @@ export function DaftarUsahaWizard({ tersambung, sudahMasuk, namaAwal, jenisAwal,
   const [tema, setTema] = useState<"gelap" | "terang">("gelap");
   const [galat, setGalat] = useState<Galat>({});
   const [pesan, setPesan] = useState("");
+  const [tujuan, setTujuan] = useState<string | null>(null);
   const [sibuk, mulai] = useTransition();
   const urutCek = useRef(0);
   const lainRef = useRef<HTMLInputElement>(null);
@@ -118,7 +122,7 @@ export function DaftarUsahaWizard({ tersambung, sudahMasuk, namaAwal, jenisAwal,
     setPesan("");
     mulai(async () => {
       const r = await buatUsaha({ jenis, nama: namaUsaha, kategori, kategoriLain, kota, slug, tema, bayar: jalurBayar ? { paket: jalurBayar.plan, periode: jalurBayar.periode } : undefined });
-      if (r.ok) { router.replace(r.ke); router.refresh(); return; }
+      if (r.ok) { setTujuan(r.ke); router.prefetch(r.ke); return; }
       setGalat(r.galat);
       setPesan(r.pesan ?? "");
       if (r.galat.slug || r.galat.kategoriLain || r.galat.nama) setLangkah(3);
@@ -130,14 +134,21 @@ export function DaftarUsahaWizard({ tersambung, sudahMasuk, namaAwal, jenisAwal,
   const j = (jalurBayar ? JUDUL_BAYAR : JUDUL)[langkah];
 
   return (
-    <div className="shell">
-      <main className="scroll" style={{ paddingTop: 20 }}>
-        <div className="hrow">
+    <div className="shell auth auth-wz">
+      {tujuan && <SelesaiAuth judul="Usahamu siap" sub={namaUsaha.trim() ? `${namaUsaha.trim()} sudah dibuat.` : "Menyiapkan dashboard kamu…"} lanjut={() => { router.replace(tujuan); router.refresh(); }} />}
+      <div className="auth-latar" aria-hidden="true"><i /><i /><i /></div>
+      <PanelAuth />
+      <main className="auth-main" id="isi">
+        <div className="auth-atas">
+          <div className="auth-logo auth-logo-hp"><LogoK className="auth-tanda" />KelolaKelas</div>
+          <ThemeToggle />
+        </div>
+        <div className="auth-kotak wz-kotak">
+        <div className="hrow wz-bar">
           {kembali
             ? <button type="button" className="circ" onClick={kembali} aria-label="Kembali"><Icon name="back" /></button>
             : langkah === 1 ? <Link href="/masuk" className="circ" aria-label="Ke halaman masuk"><Icon name="back" /></Link> : null}
           <div className="t label">Langkah {langkah} dari {TOTAL}</div>
-          <ThemeToggle />
         </div>
         <div className="wz-langkah" role="progressbar" aria-valuemin={1} aria-valuemax={TOTAL} aria-valuenow={langkah} aria-label="Kemajuan pendaftaran">
           {Array.from({ length: TOTAL }, (_, i) => <i key={i} className={i < langkah ? "sudah" : ""} />)}
@@ -148,18 +159,18 @@ export function DaftarUsahaWizard({ tersambung, sudahMasuk, namaAwal, jenisAwal,
 
         {langkah === 1 && (
           <form className="wz-isi" style={{ flex: 1 }} onSubmit={(e) => { e.preventDefault(); langkah1(); }} noValidate>
-            <Field label="Nama kamu" galat={galat.nama}>
-              <input value={nama} onChange={(e) => { setNama(e.target.value); bersih("nama"); }} autoComplete="name" maxLength={60} />
-            </Field>
-            <Field label="Email" galat={galat.email}>
-              <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); bersih("email"); }} autoComplete="email" inputMode="email" maxLength={120} />
-            </Field>
-            <Field label={`Kata sandi (minimal ${SANDI_MIN} karakter)`} galat={galat.sandi}>
-              <div className="wz-masukan">
-                <input type={lihat ? "text" : "password"} value={sandi} onChange={(e) => { setSandi(e.target.value); bersih("sandi"); }} autoComplete="new-password" maxLength={72} />
-                <TombolMata tampil={lihat} onToggle={() => setLihat((v) => !v)} />
-              </div>
-            </Field>
+            <TombolGoogle label="Daftar dengan Google" lanjut={typeof window === "undefined" ? "/daftar-usaha" : `${window.location.pathname}${window.location.search}`} />
+            <div className="auth-atau"><span>atau pakai email</span></div>
+            <Pil id="akun-nama" label="Nama kamu" galat={galat.nama}>
+              <input id="akun-nama" value={nama} onChange={(e) => { setNama(e.target.value); bersih("nama"); }} autoComplete="name" maxLength={60} placeholder="Nama lengkap" />
+            </Pil>
+            <Pil id="akun-email" label="Email" galat={galat.email}>
+              <input id="akun-email" type="email" value={email} onChange={(e) => { setEmail(e.target.value); bersih("email"); }} autoComplete="email" inputMode="email" maxLength={120} placeholder="nama@email.com" />
+            </Pil>
+            <Pil id="akun-sandi" label={`Kata sandi (minimal ${SANDI_MIN} karakter)`} galat={galat.sandi}>
+              <input id="akun-sandi" type={lihat ? "text" : "password"} value={sandi} onChange={(e) => { setSandi(e.target.value); bersih("sandi"); }} autoComplete="new-password" maxLength={72} placeholder={`Kata sandi (minimal ${SANDI_MIN} karakter)`} />
+              <button type="button" className="auth-mata" onClick={() => setLihat((v) => !v)} aria-pressed={lihat} aria-label={lihat ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}><Icon name={lihat ? "eyeoff" : "eye"} /></button>
+            </Pil>
             {pesan && <p className="galat" role="alert">{pesan}</p>}
             <div className="wz-kaki">
               <button type="submit" className="btn" disabled={sibuk || !tersambung}>{sibuk ? "Membuat akun…" : "Lanjut"}</button>
@@ -267,7 +278,19 @@ export function DaftarUsahaWizard({ tersambung, sudahMasuk, namaAwal, jenisAwal,
             </div>
           </div>
         )}
+        </div>
       </main>
+    </div>
+  );
+}
+
+/** Kolom berbentuk pil (sama dengan halaman masuk): label kecil di dalam pil di HP, di atas pil di laptop; galat meluncur di bawahnya. */
+function Pil({ id, label, galat, children }: { id: string; label: string; galat?: string; children: React.ReactNode }) {
+  return (
+    <div className="auth-fld">
+      <label className="auth-lbl" htmlFor={id}>{label}</label>
+      <div className="auth-pil" data-salah={galat ? "ya" : undefined}>{children}</div>
+      <div className="auth-gal" data-ada={galat ? "ya" : "tidak"}><p role={galat ? "alert" : undefined}>{galat}</p></div>
     </div>
   );
 }

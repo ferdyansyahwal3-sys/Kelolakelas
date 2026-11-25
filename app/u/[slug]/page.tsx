@@ -4,46 +4,49 @@ import { notFound } from "next/navigation";
 import { AturanBeranda } from "@/components/AturanBeranda";
 import { Icon } from "@/components/Icon";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { kelompokPaket, linkWa, slotTerdekat } from "@/lib/beranda";
-import { HARI_INI, jadwalContoh, paketOwnerContoh, pengajarContoh, tenantContoh } from "@/lib/contoh";
+import { kelompokPaket, linkWa } from "@/lib/beranda";
+import { slotTerdekatDb } from "@/lib/berandaDb";
+import { muatUsahaPublik } from "@/lib/supabase/publikData";
 import { inisial, pecahRupiah } from "@/lib/format";
 import { getIstilah, kapital } from "@/lib/istilah";
 import { aturanUntuk } from "@/lib/pengaturan";
 import { labelTanggal } from "@/lib/sesi";
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
-  if (params.slug !== tenantContoh.slug) return { title: "Tidak ditemukan" };
-  return { title: `${tenantContoh.nama} · Daftar ${tenantContoh.kategoriUsaha.toLowerCase()}`, description: tenantContoh.deskripsi };
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const u = await muatUsahaPublik(params.slug, 0);
+  if (!u) return { title: "Tidak ditemukan" };
+  return { title: `${u.nama} · Daftar ${u.kategori.toLowerCase()}`, description: u.deskripsi || `Daftar ${u.kategori.toLowerCase()} di ${u.nama}.` };
 }
 
 const rp = (n: number) => { const p = pecahRupiah(n); return `Rp ${p.depan}${p.belakang}`; };
 
-export default function BerandaUsaha({ params }: { params: { slug: string } }) {
-  if (params.slug !== tenantContoh.slug) notFound();
-  const t = tenantContoh;
-  const istilah = getIstilah(t.istilah);
-  const wa = linkWa(t.noWa, `Halo ${t.nama}, saya mau tanya soal les.`);
-  const dekat = slotTerdekat(jadwalContoh, HARI_INI, "09.00", 3);
-  const paket = kelompokPaket(paketOwnerContoh);
-  const namaPengajar = (id: string) => pengajarContoh.find((p) => p.id === id)?.nama ?? "";
-  const pelatih = pengajarContoh.map((p) => ({ ...p, kelas: Array.from(new Set(jadwalContoh.filter((s) => s.pengajarId === p.id).map((s) => s.nama))) }));
+export default async function BerandaUsaha({ params }: { params: { slug: string } }) {
+  const u = await muatUsahaPublik(params.slug);
+  if (!u) notFound();
+  const t = { nama: u.nama, slug: u.slug, kota: u.kota, kategori: u.kategori, deskripsi: u.deskripsi, area: u.area, noWa: u.noWa, kategoriUsaha: u.kategori };
+  const istilah = getIstilah(u.istilah);
+  const wa = u.noWa ? linkWa(u.noWa, `Halo ${t.nama}, saya mau tanya soal ${istilah.sesi}.`) : null;
+  const dekat = slotTerdekatDb(u.jadwal, u.terisi, u.tutup, u.hariIni, u.jamSekarang, 3);
+  const paket = kelompokPaket(u.paket);
+  const namaPengajar = (id: string) => u.pengajar.find((p) => p.id === id)?.nama ?? "";
+  const pelatih = u.pengajar.map((p) => ({ ...p, kelas: Array.from(new Set(u.jadwal.filter((s) => s.pengajarId === p.id).map((s) => s.nama))) }));
 
   return (
     <div className="shell">
-      <main className="scroll" style={{ paddingTop: 28 }}>
+      <main className="scroll kolom2" style={{ paddingTop: 28 }}>
         <div className="hrow">
           <span className="avatar" aria-hidden="true">{inisial(t.nama)}</span>
           <div className="t">
             <div style={{ fontWeight: 600 }}>{t.nama}</div>
-            <div className="label" style={{ fontSize: 12 }}>{t.kota} · {t.kategori}</div>
+            <div className="label" style={{ fontSize: 12 }}>{[t.kota, t.kategori].filter(Boolean).join(" · ")}</div>
           </div>
           <ThemeToggle />
         </div>
 
         <section className="panel hero-usaha" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
           <h1 className="title" style={{ color: "var(--panel-text)" }}>{t.nama}</h1>
-          <p style={{ margin: 0, color: "var(--panel-text-2)", lineHeight: 1.55 }}>{t.deskripsi}</p>
-          <span className="pill" style={{ alignSelf: "flex-start" }}><span className="dot" />{t.area}</span>
+          {t.deskripsi && <p style={{ margin: 0, color: "var(--panel-text-2)", lineHeight: 1.55 }}>{t.deskripsi}</p>}
+          {t.area && <span className="pill" style={{ alignSelf: "flex-start" }}><span className="dot" />{t.area}</span>}
           <div className="aksi">
             <Link href={`/u/${t.slug}/slot`} className="btn btn-sm">Lihat slot</Link>
             {wa && <a href={wa} className="btn btn-2 btn-sm" target="_blank" rel="noopener noreferrer"><Icon name="wa" />Chat WA</a>}

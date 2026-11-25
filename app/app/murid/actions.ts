@@ -1,4 +1,7 @@
 "use server";
+import { hashKode } from "@/lib/hashKode";
+import { buatTokenPortal } from "@/lib/portal";
+import { klienAdmin } from "@/lib/supabase/server";
 import { ambilKonteksOwner } from "@/lib/supabase/konteks";
 import { bolehUbahData } from "@/lib/langganan";
 import { hariIniJakarta, tanggalJakarta } from "@/lib/langgananData";
@@ -98,4 +101,23 @@ export async function perpanjangMurid(id: string, paketId: string): Promise<Hasi
   if (!UUID.test(String(id)) || !UUID.test(String(paketId))) return { ok: false, pesan: "Pilih paket." };
   const { error } = await k.db.rpc("perpanjang_murid", { p_murid_id: id, p_paket_id: paketId });
   return error ? { ok: false, pesan: pesanGalatMurid(error) } : { ok: true };
+}
+
+/**
+ * Link portal pribadi murid. Token dibuat di server dan HANYA hash-nya yang disimpan; token asli dikembalikan sekali ke pemilik.
+ * Membuat link baru mencabut link lama murid itu (satu link aktif per murid).
+ */
+export async function buatLinkPortal(muridId: string): Promise<{ ok: true; token: string } | { ok: false; pesan: string }> {
+  const k = await ambilKonteksOwner();
+  if (!k) return { ok: false, pesan: TAK_MASUK };
+  if (!bolehUbahData(k.akses.akses)) return { ok: false, pesan: TUTUP };
+  if (!UUID.test(String(muridId))) return { ok: false, pesan: "Murid tidak ditemukan." };
+  const { data: m } = await k.db.from("murid").select("id").eq("id", muridId).eq("tenant_id", k.tenant.id).maybeSingle();
+  if (!m) return { ok: false, pesan: "Murid tidak ditemukan." };
+  const token = buatTokenPortal();
+  const admin = klienAdmin();
+  const { error: eCabut } = await admin.from("portal_token").update({ dicabut_pada: new Date().toISOString() }).eq("tenant_id", k.tenant.id).eq("murid_id", muridId).is("dicabut_pada", null);
+  if (eCabut) return { ok: false, pesan: "Link belum dibuat. Coba lagi sebentar." };
+  const { error } = await admin.from("portal_token").insert({ tenant_id: k.tenant.id, murid_id: muridId, token_hash: hashKode(token) });
+  return error ? { ok: false, pesan: "Link belum dibuat. Coba lagi sebentar." } : { ok: true, token };
 }

@@ -4,7 +4,7 @@ import { MuridDetail } from "@/components/MuridDetail";
 import { ambilKonteksOwner } from "@/lib/supabase/konteks";
 import { muatMurid } from "@/lib/supabase/muridData";
 import { bolehUbahData } from "@/lib/langganan";
-import { perpanjangMurid, tambahCatatan, ubahAktifMurid, ubahDataMurid } from "../actions";
+import { buatLinkPortal, perpanjangMurid, tambahCatatan, ubahAktifMurid, ubahDataMurid } from "../actions";
 
 export default async function DetailMurid({ params }: { params: { id: string } }) {
   const k = await ambilKonteksOwner();
@@ -16,7 +16,7 @@ export default async function DetailMurid({ params }: { params: { id: string } }
   const { data: pilihan } = await k.db.from("paket").select("id, nama, harga").eq("tenant_id", k.tenant.id).eq("aktif", true).eq("kategori", murid.kategori).order("harga");
 
   return (
-    <main className="scroll" style={{ paddingTop: 20 }}>
+    <main className="scroll kolom2" style={{ paddingTop: 20 }}>
       <PageHeader title="Detail murid" back="/app/murid" />
       <MuridDetail
         murid={murid}
@@ -26,7 +26,7 @@ export default async function DetailMurid({ params }: { params: { id: string } }
         tokenAwal={null}
         bolehUbah={bolehUbahData(k.akses.akses)}
         paketPilihan={(pilihan ?? []) as { id: string; nama: string; harga: number }[]}
-        aksi={{ ubahAktif: ubahAktifMurid, tambahCatatan, ubahData: ubahDataMurid, perpanjang: perpanjangMurid }}
+        aksi={{ ubahAktif: ubahAktifMurid, tambahCatatan, ubahData: ubahDataMurid, perpanjang: perpanjangMurid, buatLinkPortal }}
       />
     </main>
   );

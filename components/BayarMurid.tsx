@@ -11,7 +11,7 @@ const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`
 
 export function BayarMurid({ slug, kode, server, rekening }: { slug: string; kode: string; server: Info | null; rekening: Rekening[] }) {
   const [info, setInfo] = useState<Info | null>(server);
-  const [rek, setRek] = useState<Rekening[]>(rekening);
+  const rek = rekening;
   const [pilih, setPilih] = useState(rekening[0]?.id ?? "");
   const [berkas, setBerkas] = useState<File | null>(null);
   const [pratinjau, setPratinjau] = useState("");
@@ -28,9 +28,6 @@ export function BayarMurid({ slug, kode, server, rekening }: { slug: string; kod
         const lokal = (JSON.parse(localStorage.getItem("kk-pendaftaran-saya") ?? "[]") as { kode: string; nama: string; slot: string; total: number }[]).find((x) => x.kode === kode);
         if (lokal) setInfo({ nama: lokal.nama, slot: lokal.slot, total: lokal.total, sudahBayar: false });
       }
-      // Pratinjau untuk owner: rekening dari Pengaturan di perangkat ini.
-      const d = JSON.parse(localStorage.getItem("kk-pengaturan") ?? "null") as { rekening?: Rekening[] } | null;
-      if (Array.isArray(d?.rekening) && d!.rekening!.length > 0) { setRek(d!.rekening!); setPilih(d!.rekening![0]!.id); }
     } catch {}
   }, [server, kode]);
 
@@ -54,7 +51,9 @@ export function BayarMurid({ slug, kode, server, rekening }: { slug: string; kod
   function kirim() {
     if (!berkas) { setGalat("Pilih foto atau PDF bukti transfer."); return; }
     mulai(async () => {
-      const r = await kirimBukti({ kode, rekeningId: pilih, berkas: { nama: berkas.name, tipe: berkas.type, ukuran: berkas.size } });
+      const f = new FormData();
+      f.set("slug", slug); f.set("kode", kode); f.set("rekeningId", pilih); f.set("berkas", berkas);
+      const r = await kirimBukti(f);
       if (r.ok) setSelesai(true); else setGalat(r.pesan);
     });
   }
@@ -113,7 +112,7 @@ export function BayarMurid({ slug, kode, server, rekening }: { slug: string; kod
           {berkas && !pratinjau && <p className="meta" style={{ margin: 0 }}>{berkas.name}</p>}
           {galat && <p className="galat" role="alert" style={{ margin: 0 }}>{galat}</p>}
           <button type="button" className="btn" disabled={sibuk || rek.length === 0} onClick={kirim}>{sibuk ? "Mengirim…" : "Kirim bukti bayar"}</button>
-          <p className="meta" style={{ margin: 0 }}>Berkas belum tersimpan sampai penyimpanan tersambung; yang diperiksa baru jenis dan ukurannya.</p>
+          <p className="meta" style={{ margin: 0 }}>Berkasmu disimpan privat dan hanya bisa dilihat pemilik usaha.</p>
         </div>
       </section>
     </>

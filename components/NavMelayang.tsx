@@ -32,7 +32,7 @@ export function NavMelayang({ items, aktifId, onPilih, label }: Props) {
     <nav className="nav-mel" data-kecil={kecil ? "ya" : "tidak"} aria-label={label} style={{ "--i": idx, "--n": items.length } as React.CSSProperties}>
       <span className="nav-lampu" aria-hidden="true"><i className="nav-bar" /><i className="nav-sorot" /></span>
       {items.map((it) => {
-        const isi = <><Icon name={it.icon} />{it.titik && <i className="nav-titik" aria-hidden="true" />}</>;
+        const isi = <><Icon name={it.icon} /><span className="nav-label">{it.label}</span>{it.titik && <i className="nav-titik" aria-hidden="true" />}</>;
         const aktif = it.id === aktifId;
         return it.href ? (
           <Link key={it.id} href={it.href} className="nav-item" aria-current={aktif ? "page" : undefined} aria-label={it.titik ? `${it.label}, ada yang baru` : it.label} title={it.label}>{isi}</Link>

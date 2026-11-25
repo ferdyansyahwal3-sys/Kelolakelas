@@ -14,17 +14,21 @@ interface Props {
   persenAwal: number;
   nominalAwal: number;
   dibayarAwal: GajiDibayar;
+  /** Panel asli: mode bagi hasil dan angka datang dari database (localStorage diabaikan). */
+  modeAwal?: ModeBagi;
+  dariServer?: boolean;
 }
 const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`;
 const KELAS: Record<StatusGaji, string> = { berjalan: "st st-few", sudah_masuk: "st st-ok", belum_masuk: "st st-free", kosong: "st st-full" };
 
-export function GajiPelatih({ pembayaran, pengajarId, bulanBerjalan, persenAwal, nominalAwal, dibayarAwal }: Props) {
-  const [mode, setMode] = useState<ModeBagi>("persen");
+export function GajiPelatih({ pembayaran, pengajarId, bulanBerjalan, persenAwal, nominalAwal, dibayarAwal, modeAwal = "persen", dariServer = false }: Props) {
+  const [mode, setMode] = useState<ModeBagi>(modeAwal);
   const [nilai, setNilai] = useState({ persen: persenAwal, nominal: nominalAwal });
   const [dibayar, setDibayar] = useState<GajiDibayar>(dibayarAwal);
   const [buka, setBuka] = useState<string | null>(null);
 
   useEffect(() => {
+    if (dariServer) return;
     try {
       const b = JSON.parse(localStorage.getItem(KUNCI_BAGI) ?? "null") as { mode?: ModeBagi; nilai?: { persen?: Record<string, number>; nominal?: Record<string, number> } } | null;
       if (b?.mode === "persen" || b?.mode === "nominal") setMode(b.mode);
@@ -32,7 +36,7 @@ export function GajiPelatih({ pembayaran, pengajarId, bulanBerjalan, persenAwal,
       const g = JSON.parse(localStorage.getItem(KUNCI_GAJI) ?? "null") as GajiDibayar | null;
       if (g && typeof g === "object" && !Array.isArray(g)) setDibayar(g);
     } catch {}
-  }, [pengajarId]);
+  }, [pengajarId, dariServer]);
 
   const riwayat = riwayatGaji(pembayaran, pengajarId, bulanBerjalan, nilai[mode], mode, dibayar, 6);
   const berjalan = riwayat[0]!;

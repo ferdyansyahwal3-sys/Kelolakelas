@@ -27,6 +27,8 @@ interface Props {
   istilah: { murid: string; sesi: string };
   /** Isi awal pemberitahuan murid (sebelum ada yang tersimpan di perangkat ini), supaya info baru ditambahkan ke daftar yang sama dengan halaman Pemberitahuan. */
   pemberitahuanAwal?: Pemberitahuan[];
+  /** Bila ada (panel asli): absen disimpan ke database sebelum layar berubah. Tanpa ini = hanya lokal (demo). */
+  aksiAbsen?: (jadwalId: string, tanggal: string, muridId: string, status: StatusAbsen | null) => Promise<{ ok: true } | { ok: false; pesan: string }>;
 }
 
 const PILIHAN: { status: StatusAbsen; label: string }[] = [
@@ -39,7 +41,7 @@ const KUNCI_GANTI = "kk-ganti-pelatih";
 const KUNCI_MINTA = "kk-minta-ganti";
 const GULIR_MULAI = 2; // lebih dari ini, daftar murid digulir di dalam kartu
 
-export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, absensiAwal, istilah, pemberitahuanAwal = [] }: Props) {
+export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, absensiAwal, istilah, pemberitahuanAwal = [], aksiAbsen }: Props) {
   const [tanggal, setTanggal] = useState(hariIni);
   const [pid, setPid] = useState<string>("semua");
   const [kead, setKead] = useState<Keadaan>({ absensi: absensiAwal, pengganti: [] });
@@ -88,8 +90,21 @@ export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, abse
     return h.ok;
   }
 
-  function ketuk(kunci: string, status: StatusAbsen) {
-    hasil(tandai(k, kead, kunci, status));
+  const [menyimpan, setMenyimpan] = useState(false);
+
+  async function ketuk(kunci: string, status: StatusAbsen) {
+    if (menyimpan) return;
+    const h = tandai(k, kead, kunci, status);
+    if (!h.ok) { hasil(h); return; }
+    const [slotId, tgl, muridId] = kunci.split("|") as [string, string, string];
+    // Hanya peserta tetap yang disimpan ke database; sesi pengganti masih lokal (lihat catatan _state.md).
+    if (aksiAbsen && (pesertaTetap[slotId] ?? []).includes(muridId)) {
+      setMenyimpan(true);
+      const r = await aksiAbsen(slotId, tgl, muridId, h.keadaan.absensi[kunci] ?? null);
+      setMenyimpan(false);
+      if (!r.ok) { setToast({ teks: r.pesan, galat: true }); return; }
+    }
+    hasil(h);
   }
 
   function pilihPengganti(dariKunci: string, slotId: string, tgl: string) {
