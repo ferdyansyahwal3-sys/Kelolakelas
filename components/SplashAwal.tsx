@@ -29,7 +29,7 @@ export function SplashAwal() {
       el.current?.setAttribute("data-fase", "keluar");
       setTimeout(() => root.removeAttribute("data-splash"), 320);
     };
-    const t = setTimeout(tutup, 1600);
+    const t = setTimeout(tutup, 2200);
     window.addEventListener("keydown", tutup, { once: true });
     window.addEventListener("pointerdown", tutup, { once: true });
     return () => { clearTimeout(t); window.removeEventListener("keydown", tutup); window.removeEventListener("pointerdown", tutup); };

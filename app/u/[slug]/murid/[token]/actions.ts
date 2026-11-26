@@ -1,4 +1,6 @@
 "use server";
+import { bolehLanjut } from "@/lib/rateLimitServer";
+import { PESAN_TERLALU_SERING } from "@/lib/rateLimit";
 import { bisaAjukanIzin } from "@/lib/portal";
 import { nomorHari } from "@/lib/sesi";
 import { cariPortal } from "@/lib/supabase/portalData";
@@ -15,6 +17,7 @@ export type HasilIzin = { ok: true } | { ok: false; pesan: string };
  * tanggal jatuh di hari slot, masih di dalam batas jam izin usaha, dan sesi itu belum diabsen hadir/alpa.
  */
 export async function ajukanIzin(slug: string, token: string, slotId: string, tanggal: string): Promise<HasilIzin> {
+  if (!(await bolehLanjut("izin"))) return { ok: false, pesan: PESAN_TERLALU_SERING };
   if (!UUID.test(String(slotId)) || !TANGGAL.test(String(tanggal))) return { ok: false, pesan: "Data tidak valid." };
   const db = klienAdmin();
   const c = await cariPortal(db, String(slug), String(token));

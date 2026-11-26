@@ -3,8 +3,8 @@ import { LogoK } from "@/components/LogoK";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { buatAkun, buatUsaha, cekAlamat } from "@/app/daftar-usaha/actions";
-import { keluar } from "@/app/masuk/actions";
+import { buatAkun, buatUsaha, cekAlamat } from "@/app/(umum)/daftar-usaha/actions";
+import { keluar } from "@/app/(umum)/masuk/actions";
 import { Icon } from "./Icon";
 import { KotaCombobox } from "./KotaCombobox";
 import { TombolGoogle } from "./TombolGoogle";
@@ -175,7 +175,6 @@ export function DaftarUsahaWizard({ tersambung, sudahMasuk, namaAwal, jenisAwal,
             <div className="wz-kaki">
               <button type="submit" className="btn" disabled={sibuk || !tersambung}>{sibuk ? "Membuat akun…" : "Lanjut"}</button>
               <p>Sudah punya akun? <Link href="/masuk" className="link" style={{ color: "var(--accent-text)" }}>Masuk</Link></p>
-              <p>Dengan mendaftar kamu setuju dengan <Link href="/syarat" className="link" style={{ color: "var(--accent-text)" }}>Syarat Layanan</Link> dan <Link href="/privasi" className="link" style={{ color: "var(--accent-text)" }}>Kebijakan Privasi</Link>.</p>
             </div>
           </form>
         )}
@@ -279,6 +278,7 @@ export function DaftarUsahaWizard({ tersambung, sudahMasuk, namaAwal, jenisAwal,
           </div>
         )}
         </div>
+        {langkah === 1 && <p className="auth-legal auth-legal-luar">Dengan mendaftar kamu setuju dengan <Link href="/syarat" className="link" style={{ color: "var(--accent-text)" }}>Syarat Layanan</Link> dan <Link href="/privasi" className="link" style={{ color: "var(--accent-text)" }}>Kebijakan Privasi</Link>.</p>}
       </main>
     </div>
   );

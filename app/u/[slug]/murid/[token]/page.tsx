@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { PortalMurid } from "@/components/PortalMurid";
 import { muatPortal } from "@/lib/supabase/portalData";
 import { ajukanIzin } from "./actions";
+import { bolehLanjut } from "@/lib/rateLimitServer";
+import { PESAN_TERLALU_SERING } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic"; // halaman pribadi: tidak pernah di-cache
 
@@ -10,6 +12,8 @@ export const metadata: Metadata = { title: "Portal murid", robots: { index: fals
 
 export default async function Portal({ params }: { params: { slug: string; token: string } }) {
   // Token tidak valid, tak dikenal, dicabut, atau milik usaha lain sama-sama 404, supaya tidak bisa dipakai menebak.
+  // Dihitung SEBELUM token dicek, jadi respons tidak membocorkan apakah token ada.
+  if (!(await bolehLanjut("portal"))) return <main className="scroll" style={{ padding: 32, textAlign: "center" }}><p>{PESAN_TERLALU_SERING}</p></main>;
   const p = await muatPortal(params.slug, params.token);
   if (!p) notFound();
 

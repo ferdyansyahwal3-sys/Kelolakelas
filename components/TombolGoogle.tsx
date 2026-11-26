@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { googleTersedia } from "@/app/masuk/actions";
+import { googleTersedia } from "@/app/(umum)/masuk/actions";
 import { klienBrowser } from "@/lib/supabase/browser";
 
 function LogoGoogle() {

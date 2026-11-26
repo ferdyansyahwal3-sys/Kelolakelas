@@ -1,4 +1,6 @@
 "use server";
+import { bolehLanjut } from "@/lib/rateLimitServer";
+import { PESAN_TERLALU_SERING } from "@/lib/rateLimit";
 import { cariPromo, hitungTotal, type Promo } from "@/lib/harga";
 import { slotPadaTanggal } from "@/lib/berandaDb";
 import { buatKode, normalisasiWa, validasiPendaftaran, type Galat, type InputPendaftaran } from "@/lib/pendaftaran";
@@ -23,11 +25,13 @@ async function promoSah(tenantId: string, kode: string | undefined, hariIni: str
 }
 
 export async function cekKodePromo(slug: string, kode: string): Promise<Promo | null> {
+  if (!(await bolehLanjut("promo"))) return null;
   const u = await muatUsahaPublik(String(slug), 0);
   return u ? promoSah(u.id, String(kode), u.hariIni) : null;
 }
 
 export async function kirimPendaftaran(slug: string, input: InputPendaftaran): Promise<HasilKirim> {
+  if (!(await bolehLanjut("daftar"))) return { ok: false, galat: {}, pesan: PESAN_TERLALU_SERING };
   const galat = validasiPendaftaran(input);
   if (Object.keys(galat).length > 0) return { ok: false, galat };
 

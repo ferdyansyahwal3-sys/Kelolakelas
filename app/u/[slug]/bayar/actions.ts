@@ -1,4 +1,6 @@
 "use server";
+import { bolehLanjut } from "@/lib/rateLimitServer";
+import { PESAN_TERLALU_SERING } from "@/lib/rateLimit";
 import { randomUUID } from "node:crypto";
 import { BUKTI_MAKS_PER_PENDAFTARAN, pathBukti, periksaBukti } from "@/lib/buktiDb";
 import { bacaPencarian } from "@/lib/status";
@@ -12,6 +14,7 @@ export type HasilBukti = { ok: true } | { ok: false; pesan: string };
  * Jenis berkas dibaca dari isinya; pendaftaran harus milik usaha `slug` dan masih menunggu; rekening harus milik usaha itu.
  */
 export async function kirimBukti(form: FormData): Promise<HasilBukti> {
+  if (!(await bolehLanjut("bayar"))) return { ok: false, pesan: PESAN_TERLALU_SERING };
   const q = bacaPencarian(String(form.get("kode") ?? ""));
   if (q.jenis !== "kode") return { ok: false, pesan: "Kode pendaftaran tidak valid." };
   const berkas = form.get("berkas");

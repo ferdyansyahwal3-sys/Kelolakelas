@@ -3,7 +3,7 @@ import { LogoK } from "@/components/LogoK";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
-import { masuk } from "@/app/masuk/actions";
+import { masuk } from "@/app/(umum)/masuk/actions";
 import { Icon } from "./Icon";
 import { ThemeToggle } from "./ThemeToggle";
 import { TombolGoogle } from "./TombolGoogle";
@@ -69,7 +69,6 @@ export function FormMasuk({ lanjut, tersambung, galatAwal = "" }: { lanjut: stri
         <div className="auth-kotak">
           <div className="auth-kepala" style={{ "--i": 0 } as React.CSSProperties}>
             <h1 className="auth-h1">Selamat datang kembali</h1>
-            <p className="auth-sub">Masuk untuk pemilik usaha dan pelatih.</p>
           </div>
           {!tersambung && <p className="galat" role="alert">Layanan belum dikonfigurasi di server ini.</p>}
           {galatAwal && <p className="galat auth-galat" role="alert">{galatAwal}</p>}
@@ -98,8 +97,8 @@ export function FormMasuk({ lanjut, tersambung, galatAwal = "" }: { lanjut: stri
             <TombolGoogle label="Masuk dengan Google" lanjut={lanjut} className="tg-btn" />
             <p className="auth-buat">Belum punya akun? <Link href="/daftar-usaha">Buat akun</Link></p>
           </div>
-          <p className="auth-legal" style={{ "--i": 6 } as React.CSSProperties}>Dengan masuk, kamu setuju dengan <Link href="/syarat">Syarat layanan</Link> dan <Link href="/privasi">Kebijakan privasi</Link>.</p>
         </div>
+        <p className="auth-legal auth-legal-luar">Dengan masuk, kamu setuju dengan <Link href="/syarat">Syarat layanan</Link> dan <Link href="/privasi">Kebijakan privasi</Link>.</p>
       </main>
     </div>
   );

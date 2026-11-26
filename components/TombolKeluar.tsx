@@ -1,4 +1,4 @@
-import { keluar } from "@/app/masuk/actions";
+import { keluar } from "@/app/(umum)/masuk/actions";
 
 /** Keluar dari akun (server action: menghapus sesi di server, lalu ke /masuk). */
 export function TombolKeluar() {
