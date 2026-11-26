@@ -6,6 +6,7 @@ import { Icon } from "@/components/Icon";
 import { NavMelayang } from "@/components/NavMelayang";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePlatform } from "./PlatformProvider";
+import { keluarAdmin } from "@/app/(umum)/platform/aksi";
 
 const NAV = [
   { href: "/platform", label: "Ringkasan", icon: "chart", persis: true },
@@ -26,13 +27,14 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
           {NAV.map((n) => <Link key={n.href} href={n.href} aria-current={aktif(n) ? "page" : undefined}><Icon name={n.icon} />{n.label}</Link>)}
         </nav>
         <div className="plat-side-foot">
+          <form action={keluarAdmin}><button type="submit" className="btn btn-2 btn-sm">Keluar</button></form>
           <button type="button" className="btn btn-2 btn-sm" aria-pressed={sembunyi} onClick={() => setSembunyi(!sembunyi)}>{sembunyi ? "Tampilkan nominal" : "Sembunyikan nominal"}</button>
         </div>
       </aside>
 
       <div className="plat-col">
         <div className="plat-top">
-          <span className="st st-few" role="note">Data contoh · tidak terhubung database · hilang saat reload</span>
+          <span className="st st-ok" role="note">Data asli dari database</span>
           <span className="plat-top-aksi">
             <button type="button" className="circ plat-mata" aria-pressed={sembunyi} aria-label={sembunyi ? "Tampilkan nominal" : "Sembunyikan nominal"} onClick={() => setSembunyi(!sembunyi)}>
               <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

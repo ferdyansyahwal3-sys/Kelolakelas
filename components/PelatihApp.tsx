@@ -20,6 +20,8 @@ interface Props {
   absensiAwal: Absensi;
   pemberitahuan: Pemberitahuan[];
   pengajar: { id: string; nama: string }[];
+  /** Penggantian pelatih sekali dari database (panel asli). Tanpa ini = demo, dibaca dari penyimpanan lokal. */
+  gantiAwal?: { slotId: string; tanggal: string; pelatihId: string }[];
   pembayaran: Pembayaran[];
   persenAwal: number;
   nominalAwal: number;
@@ -35,14 +37,14 @@ interface Props {
 
 const TAB = [{ id: "jadwal", label: "Jadwal", icon: "cal" }, { id: "gaji", label: "Gaji", icon: "bill" }, { id: "info", label: "Info", icon: "bell" }];
 
-export function PelatihApp({ saya, hariIni, jadwal, pesertaTetap, murid, catatanAwal, absensiAwal, pemberitahuan, pengajar, pembayaran, persenAwal, nominalAwal, dibayarAwal, modeBagi, aksi }: Props) {
+export function PelatihApp({ saya, hariIni, jadwal, pesertaTetap, murid, catatanAwal, absensiAwal, pemberitahuan, pengajar, pembayaran, persenAwal, nominalAwal, dibayarAwal, modeBagi, aksi, gantiAwal }: Props) {
   const [tab, setTab] = useState("jadwal");
   const [kabarBaru, setKabarBaru] = useState(0);
   useEffect(() => { setKabarBaru(belumDibaca(bacaKabar(), saya.id)); }, [saya.id]);
   const items = TAB.map((t) => (t.id === "info" ? { ...t, titik: kabarBaru > 0 } : t));
   return (
     <>
-      {tab === "jadwal" && <JadwalPelatih jadwal={jadwal} pesertaTetap={pesertaTetap} murid={murid} catatanAwal={catatanAwal} saya={saya} hariIni={hariIni} absensiAwal={absensiAwal} pengajar={pengajar} aksiAbsen={aksi?.absen} aksiCatatan={aksi?.catatan} />}
+      {tab === "jadwal" && <JadwalPelatih jadwal={jadwal} pesertaTetap={pesertaTetap} murid={murid} catatanAwal={catatanAwal} saya={saya} hariIni={hariIni} absensiAwal={absensiAwal} pengajar={pengajar} gantiAwal={gantiAwal} aksiAbsen={aksi?.absen} aksiCatatan={aksi?.catatan} />}
       {tab === "gaji" && <GajiPelatih pembayaran={pembayaran} pengajarId={saya.id} bulanBerjalan={hariIni.slice(0, 7)} persenAwal={persenAwal} nominalAwal={nominalAwal} dibayarAwal={dibayarAwal} modeAwal={modeBagi} dariServer={!!aksi} />}
       {tab === "info" && <PemberitahuanPanel awal={pemberitahuan} pengajar={pengajar} peran="pelatih" saya={saya} hariIni={hariIni} jadwal={jadwal} onKabarUbah={setKabarBaru} aksi={aksi ? { kirim: aksi.kirimInfo, hapus: aksi.hapusInfo } : undefined} />}
       <NavMelayang items={items} aktifId={tab} onPilih={setTab} label="Halaman pelatih" />

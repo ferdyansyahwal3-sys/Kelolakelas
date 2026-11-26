@@ -26,6 +26,7 @@ interface Props {
   hariIni: string;
   absensiAwal: Absensi;
   pengajar: { id: string; nama: string }[];
+  gantiAwal?: GantiPelatih[];
   /** Panel asli: absen dan catatan disimpan ke database. Tanpa ini = hanya lokal (demo). */
   aksiAbsen?: (jadwalId: string, tanggal: string, muridId: string, status: StatusAbsen | null) => Promise<{ ok: true } | { ok: false; pesan: string }>;
   aksiCatatan?: (muridId: string, teks: string) => Promise<{ ok: true } | { ok: false; pesan: string }>;
@@ -38,7 +39,7 @@ const PILIHAN: { status: StatusAbsen; label: string }[] = [
 ];
 const STATUS_TUKAR = { menunggu: "Menunggu persetujuan pemilik", disetujui: "Disetujui", ditolak: "Ditolak", dibatalkan: "Pindah dibatalkan pemilik" } as const;
 
-export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, hariIni, absensiAwal, pengajar, aksiAbsen, aksiCatatan }: Props) {
+export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, hariIni, absensiAwal, pengajar, aksiAbsen, aksiCatatan, gantiAwal }: Props) {
   const [mode, setMode] = useState<"hari" | "minggu">("hari");
   const [tanggal, setTanggal] = useState(hariIni);
   const [kead, setKead] = useState<Keadaan>({ absensi: absensiAwal, pengganti: [] });
@@ -49,7 +50,7 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
   const [bukaMinta, setBukaMinta] = useState<string | null>(null);
   const [formMinta, setFormMinta] = useState({ keId: "", alasan: "" });
   const [galatMinta, setGalatMinta] = useState<GalatMinta>({});
-  const [gantiList, setGantiList] = useState<GantiPelatih[]>([]);
+  const [gantiList, setGantiList] = useState<GantiPelatih[]>(gantiAwal ?? []);
   const [pindah, setPindah] = useState<PindahJadwal[]>([]);
   const [bukaCatatan, setBukaCatatan] = useState<string | null>(null);
   const [teksCatatan, setTeksCatatan] = useState("");
@@ -67,7 +68,7 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
         const c = JSON.parse(localStorage.getItem(KUNCI_CATATAN) ?? "null") as Catatan | null;
         if (c && typeof c === "object" && !Array.isArray(c)) setCatatan(c);
       }
-      const g = JSON.parse(localStorage.getItem(KUNCI_GANTI) ?? "null") as GantiPelatih[] | null;
+      const g = gantiAwal ? null : (JSON.parse(localStorage.getItem(KUNCI_GANTI) ?? "null") as GantiPelatih[] | null);
       if (Array.isArray(g)) setGantiList(g.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggal === "string" && typeof x.pelatihId === "string"));
       const q = JSON.parse(localStorage.getItem(KUNCI_MINTA) ?? "null") as PermintaanGanti[] | null;
       if (Array.isArray(q)) setMinta(q);
@@ -76,7 +77,7 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
       const pj = JSON.parse(localStorage.getItem(KUNCI_PINDAH) ?? "null") as PindahJadwal[] | null;
       if (Array.isArray(pj)) setPindah(pj.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggalAsal === "string" && typeof x.tanggalBaru === "string" && typeof x.jamBaru === "string"));
     } catch {}
-  }, [aksiCatatan]);
+  }, [aksiCatatan, gantiAwal]);
 
   useEffect(() => {
     if (!toast) return;

@@ -19,6 +19,9 @@ export async function GET(req: NextRequest) {
   const { data, error } = await db.auth.exchangeCodeForSession(searchParams.get("code")!);
   if (error || !data.user) return ke("/masuk?galat=google");
 
+  // Tautan reset kata sandi: sesi pemulihan langsung ke halaman sandi baru (apa pun perannya).
+  if (aman === "/atur-sandi") return ke("/atur-sandi");
+
   const peran = await ambilPeran(db, data.user.id);
   // Pengguna baru (belum punya usaha) dari halaman registrasi: kembali ke wizard dengan pilihan paketnya.
   const keWizard = peran.length === 0 && aman !== null && aman.split(/[?#]/)[0] === "/daftar-usaha";

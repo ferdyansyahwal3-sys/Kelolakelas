@@ -20,10 +20,16 @@ async function konteks() {
   return { k, err: "" } as const;
 }
 
-/** Slot HARUS milik pelatih ini dan murid HARUS peserta tetap slot itu; kunci tenant selalu ikut disaring. */
-async function slotMilikku(tenantId: string, pengajarId: string, jadwalId: string) {
-  const { data } = await klienAdmin().from("jadwal_template").select("id, hari, jam_mulai, pengajar_id").eq("id", jadwalId).eq("tenant_id", tenantId).eq("pengajar_id", pengajarId).maybeSingle();
-  return data as { id: string; hari: number; jam_mulai: string; pengajar_id: string } | null;
+/** Slot HARUS milik pelatih ini dan murid HARUS peserta tetap slot itu; kunci tenant selalu ikut disaring. Bila `tanggal` diberikan, penggantian sekali ikut dihitung: yang memegang sesi itu hari itu adalah pelatih pengganti. */
+async function slotMilikku(tenantId: string, pengajarId: string, jadwalId: string, tanggal?: string) {
+  const db = klienAdmin();
+  const { data } = await db.from("jadwal_template").select("id, hari, jam_mulai, pengajar_id").eq("id", jadwalId).eq("tenant_id", tenantId).maybeSingle();
+  const slot = data as { id: string; hari: number; jam_mulai: string; pengajar_id: string } | null;
+  if (!slot) return null;
+  if (!tanggal) return slot.pengajar_id === pengajarId ? slot : null;
+  const { data: g } = await db.from("ganti_pelatih").select("pengajar_id").eq("tenant_id", tenantId).eq("jadwal_id", jadwalId).eq("tanggal", tanggal).maybeSingle();
+  const pemegang = (g as { pengajar_id: string } | null)?.pengajar_id ?? slot.pengajar_id;
+  return pemegang === pengajarId ? slot : null;
 }
 async function pesertaSlot(tenantId: string, jadwalId: string, muridId: string) {
   const { data } = await klienAdmin().from("peserta_tetap").select("id").eq("tenant_id", tenantId).eq("jadwal_id", jadwalId).eq("murid_id", muridId).maybeSingle();
@@ -36,8 +42,8 @@ export async function absenPelatih(jadwalId: string, tanggal: string, muridId: s
   const k = c.k;
   if (!UUID.test(String(jadwalId)) || !UUID.test(String(muridId)) || !TANGGAL.test(String(tanggal))) return { ok: false, pesan: "Data tidak valid." };
   if (status !== null && !["hadir", "izin", "alpa"].includes(String(status))) return { ok: false, pesan: "Status tidak valid." };
-  const slot = await slotMilikku(k.tenantId, k.pengajarId, jadwalId);
-  if (!slot) return { ok: false, pesan: "Slot ini bukan milikmu." };
+  const slot = await slotMilikku(k.tenantId, k.pengajarId, jadwalId, tanggal);
+  if (!slot) return { ok: false, pesan: "Sesi ini bukan milikmu pada tanggal itu." };
   if (nomorHari(tanggal) - 1 !== slot.hari) return { ok: false, pesan: "Tanggal tidak sesuai hari slot." };
   if (!(await pesertaSlot(k.tenantId, jadwalId, muridId))) return { ok: false, pesan: "Murid ini bukan peserta tetap slotmu." };
   const db = klienAdmin();

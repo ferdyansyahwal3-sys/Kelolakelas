@@ -29,6 +29,9 @@ interface Props {
   pemberitahuanAwal?: Pemberitahuan[];
   /** Bila ada (panel asli): absen disimpan ke database sebelum layar berubah. Tanpa ini = hanya lokal (demo). */
   aksiAbsen?: (jadwalId: string, tanggal: string, muridId: string, status: StatusAbsen | null) => Promise<{ ok: true } | { ok: false; pesan: string }>;
+  /** Panel asli: ganti pelatih sekali disimpan di database (awal dari server). Tanpa ini = hanya lokal (demo). */
+  gantiAwal?: GantiPelatih[];
+  aksiGanti?: (jadwalId: string, tanggal: string, pengajarId: string | null) => Promise<{ ok: true } | { ok: false; pesan: string }>;
 }
 
 const PILIHAN: { status: StatusAbsen; label: string }[] = [
@@ -41,13 +44,14 @@ const KUNCI_GANTI = "kk-ganti-pelatih";
 const KUNCI_MINTA = "kk-minta-ganti";
 const GULIR_MULAI = 2; // lebih dari ini, daftar murid digulir di dalam kartu
 
-export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, absensiAwal, istilah, pemberitahuanAwal = [], aksiAbsen }: Props) {
+export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, absensiAwal, istilah, pemberitahuanAwal = [], aksiAbsen, gantiAwal, aksiGanti }: Props) {
   const [tanggal, setTanggal] = useState(hariIni);
   const [pid, setPid] = useState<string>("semua");
   const [kead, setKead] = useState<Keadaan>({ absensi: absensiAwal, pengganti: [] });
   const [aturanPengganti, setAturanPengganti] = useState(true);
   const [bukaPengganti, setBukaPengganti] = useState<string | null>(null);
-  const [gantiList, setGantiList] = useState<GantiPelatih[]>([]);
+  const [gantiList, setGantiList] = useState<GantiPelatih[]>(gantiAwal ?? []);
+  const gantiDb = gantiAwal !== undefined;
   const [bukaGanti, setBukaGanti] = useState<string | null>(null);
   const [minta, setMinta] = useState<PermintaanGanti[]>([]);
   const [tukar, setTukar] = useState<PengajuanTukar[]>([]);
@@ -62,12 +66,12 @@ export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, abse
       if (Array.isArray(t)) setTukar(t);
       const pj = JSON.parse(localStorage.getItem(KUNCI_PINDAH) ?? "null") as PindahJadwal[] | null;
       if (Array.isArray(pj)) setPindah(pj.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggalAsal === "string" && typeof x.tanggalBaru === "string" && typeof x.jamBaru === "string"));
-      const g = JSON.parse(localStorage.getItem(KUNCI_GANTI) ?? "null") as GantiPelatih[] | null;
+      const g = gantiDb ? null : (JSON.parse(localStorage.getItem(KUNCI_GANTI) ?? "null") as GantiPelatih[] | null);
       if (Array.isArray(g)) setGantiList(g.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggal === "string" && typeof x.pelatihId === "string"));
       const d = JSON.parse(localStorage.getItem("kk-pengaturan") ?? "null") as { aturan?: { sesiPengganti?: unknown } } | null;
       if (typeof d?.aturan?.sesiPengganti === "boolean") setAturanPengganti(d.aturan.sesiPengganti);
     } catch {}
-  }, []);
+  }, [gantiDb]);
 
   useEffect(() => {
     if (!toast) return;
@@ -111,9 +115,25 @@ export function SesiOwner({ jadwal, pesertaTetap, murid, pengajar, hariIni, abse
     if (hasil(jadwalkanPengganti(k, kead, jadwal, pesertaTetap, dariKunci, slotId, tgl, `pg-${Date.now()}`))) setBukaPengganti(null);
   }
 
+  /** Panel asli: tiap perubahan dikirim ke database dulu; bila gagal, daftar lama dipertahankan dan pesannya ditampilkan. */
   function simpanGanti(g: GantiPelatih[]) {
+    if (!gantiDb || !aksiGanti) {
+      setGantiList(g);
+      try { localStorage.setItem(KUNCI_GANTI, JSON.stringify(g)); } catch {}
+      return;
+    }
+    const lama = gantiList;
+    const kunci = (x: GantiPelatih) => `${x.slotId}|${x.tanggal}`;
+    const ubah: { slotId: string; tanggal: string; pelatihId: string | null }[] = [];
+    for (const x of g) { const y = lama.find((z) => kunci(z) === kunci(x)); if (!y || y.pelatihId !== x.pelatihId) ubah.push({ slotId: x.slotId, tanggal: x.tanggal, pelatihId: x.pelatihId }); }
+    for (const y of lama) if (!g.some((x) => kunci(x) === kunci(y))) ubah.push({ slotId: y.slotId, tanggal: y.tanggal, pelatihId: null });
     setGantiList(g);
-    try { localStorage.setItem(KUNCI_GANTI, JSON.stringify(g)); } catch {}
+    void (async () => {
+      for (const u of ubah) {
+        const r = await aksiGanti(u.slotId, u.tanggal, u.pelatihId);
+        if (!r.ok) { setGantiList(lama); setToast({ teks: r.pesan, galat: true }); return; }
+      }
+    })();
   }
 
   function simpanMinta(q: PermintaanGanti[]) {

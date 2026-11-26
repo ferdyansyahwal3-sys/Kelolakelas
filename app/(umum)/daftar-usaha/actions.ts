@@ -1,4 +1,6 @@
 "use server";
+import { bolehLanjut } from "@/lib/rateLimitServer";
+import { PESAN_TERLALU_SERING } from "@/lib/rateLimit";
 import { klienServer } from "@/lib/supabase/server";
 import { ambilPeran } from "@/lib/supabase/peran";
 import { supabaseTersambung } from "@/lib/supabase/env";
@@ -12,6 +14,7 @@ export async function buatAkun(nama: string, email: string, sandi: string): Prom
   const masukan = { nama: String(nama ?? ""), email: String(email ?? ""), sandi: String(sandi ?? "") };
   const galat = validasiAkun(masukan);
   if (Object.keys(galat).length > 0) return { ok: false, galat };
+  if (!(await bolehLanjut("buatAkun"))) return { ok: false, galat: {}, pesan: PESAN_TERLALU_SERING };
   const db = klienServer();
   const { data, error } = await db.auth.signUp({ email: masukan.email.trim(), password: masukan.sandi, options: { data: { nama: masukan.nama.trim() } } });
   if (error) return { ok: false, galat: {}, pesan: pesanGalatAuth(error.code, error.status) };

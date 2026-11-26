@@ -1419,12 +1419,20 @@ a { color: inherit; text-decoration: none; }
   .sl-cincin { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(90, 170, 255, 0.7); animation: sl-cincin 0.9s var(--eo) 0.45s both; }
   .sl-judul { margin: 0; font-family: var(--font-head); font-stretch: var(--head-stretch); font-weight: var(--head-w); font-size: 26px; letter-spacing: -0.03em; color: var(--text); animation: sl-naik 0.4s var(--eo) 0.4s both; }
   .sl-sub { margin: 0; font-size: 14px; color: var(--text-2); animation: sl-naik 0.4s var(--eo) 0.5s both; }
+  /* Varian logo (layar sambutan admin platform): logo K menggantikan centang, tanpa bulatan biru */
+  .sl-bulat-logo { width: 120px; height: 92px; border-radius: 0; background: none; box-shadow: none; }
+  .sl-bulat-logo .sl-cincin { display: none; }
+  .sl-bulat .sl-logo { width: 104px; height: 80px; overflow: visible; filter: drop-shadow(0 0 26px rgba(60, 150, 255, 0.6)); }
+  .sl-logo .lk-1, .sl-logo .lk-2, .sl-logo .lk-3 { animation: sl-lk 1s cubic-bezier(0.25, 1, 0.5, 1) both; }
+  .sl-logo .lk-1 { animation-delay: 0.25s; } .sl-logo .lk-2 { animation-delay: 0.7s; } .sl-logo .lk-3 { animation-delay: 1.15s; }
+  .sl-bulat-logo ~ .sl-judul { animation-delay: 1.9s; } .sl-bulat-logo ~ .sl-sub { animation-delay: 2.1s; }
+  @keyframes sl-lk { from { transform: translateY(70px); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes sl-masuk { from { opacity: 0; } to { opacity: 1; } }
   @keyframes sl-bulat { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes sl-gambar { to { stroke-dashoffset: 0; } }
   @keyframes sl-cincin { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.9); opacity: 0; } }
   @keyframes sl-naik { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .sl-layar, .sl-bulat, .sl-cincin, .sl-judul, .sl-sub { animation: none; } .sl-centang { animation: none; stroke-dashoffset: 0; } .sl-layar { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .sl-layar, .sl-bulat, .sl-cincin, .sl-judul, .sl-sub { animation: none; } .sl-centang { animation: none; stroke-dashoffset: 0; } .sl-logo .lk-1, .sl-logo .lk-2, .sl-logo .lk-3 { animation: none; } .sl-layar { transition: none; } }
 }
 
 /* ===== Kunci langganan (trial habis) ===== */
@@ -1444,4 +1452,27 @@ a { color: inherit; text-decoration: none; }
   .kunci-ubah { font-size: 13.5px; font-weight: 600; color: var(--accent-text); }
   .kunci-ubah:hover { text-decoration: underline; }
   @media (min-width: 1024px) { .shell.has-nav .scroll.lebar { max-width: 1120px; } }
+}
+
+/* Panel samping login admin platform: kartu ringkasan kaca (hiasan, bukan data asli) */
+@media (min-width: 900px) {
+  .ap-scene { display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 8px 4px; perspective: none; }
+  .ap-kartu { padding: 16px 18px; border-radius: 22px; display: flex; flex-direction: column; gap: 4px; background: linear-gradient(145deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.08)); border: 1px solid rgba(255, 255, 255, 0.42); box-shadow: 0 20px 44px rgba(5, 20, 110, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); animation: auth-naik 0.5s cubic-bezier(0.23, 1, 0.32, 1) both; }
+  .ap-baris { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .ap-baris .ap-kartu:nth-child(2) { animation-delay: 80ms; }
+  .ap-daftar { animation-delay: 160ms; gap: 10px; }
+  .ap-k { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255, 255, 255, 0.78); }
+  .ap-angka { font-family: var(--font-head); font-stretch: var(--head-stretch); font-size: 28px; font-weight: 600; letter-spacing: -0.03em; color: #fff; }
+  .ap-angka i { font-style: normal; opacity: 0.65; }
+  .ap-garis { width: 100%; height: 64px; margin-top: 6px; overflow: visible; }
+  .ap-area { fill: rgba(255, 255, 255, 0.16); }
+  .ap-tepi { fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 300; stroke-dashoffset: 300; animation: ap-gambar 1.2s cubic-bezier(0.23, 1, 0.32, 1) 0.3s forwards; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.7)); }
+  .ap-naik { font-size: 12.5px; font-weight: 600; color: #b8ffd9; }
+  .ap-awas { color: #ffe29a; }
+  .ap-r { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #fff; }
+  .ap-r span { flex: 1; }
+  .ap-r em { font-style: normal; font-size: 12px; color: rgba(255, 255, 255, 0.6); }
+  .ap-dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px #fff; flex: none; }
+  @keyframes ap-gambar { to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) { .ap-kartu { animation: none; } .ap-tepi { animation: none; stroke-dashoffset: 0; } }
 }

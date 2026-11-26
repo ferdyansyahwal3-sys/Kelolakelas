@@ -53,6 +53,8 @@ export interface DataPelatih {
   nominal: number;
   gajiDibayar: Record<string, string>;
   pemberitahuan: Pemberitahuan[];
+  /** Penggantian pelatih sekali yang menyangkut slot pelatih ini (ia menyerahkan, atau ia yang menggantikan). */
+  ganti: { slotId: string; tanggal: string; pelatihId: string }[];
 }
 
 const tanggalMin = (hariIni: string, n: number) => new Date(Date.parse(hariIni) + n * 86400000).toISOString().slice(0, 10);
@@ -61,13 +63,19 @@ const tanggalMin = (hariIni: string, n: number) => new Date(Date.parse(hariIni) 
 export async function muatDataPelatih(k: KonteksPelatih, hariIni = hariIniJakarta()): Promise<DataPelatih> {
   const db: SupabaseClient = klienAdmin();
   const bulanMin = geserBulan(hariIni.slice(0, 7), -6);
-  const [{ data: jad }, { data: pengajar }, { data: t }] = await Promise.all([
+  const [{ data: jad }, { data: pengajar }, { data: t }, { data: gantiSemua }] = await Promise.all([
     db.from("jadwal_template").select("id, pengajar_id, hari, jam_mulai, durasi_menit, nama, kuota, lokasi").eq("tenant_id", k.tenantId),
     db.from("pengajar").select("id, nama").eq("tenant_id", k.tenantId).eq("aktif", true).order("nama"),
     db.from("tenants").select("pengaturan").eq("id", k.tenantId).maybeSingle(),
+    db.from("ganti_pelatih").select("jadwal_id, tanggal, pengajar_id").eq("tenant_id", k.tenantId).gte("tanggal", tanggalMin(hariIni, -60)),
   ]);
   const semua = (jad ?? []) as unknown as BarisJadwalDb[];
-  const milik = semua.filter((j) => j.pengajar_id === k.pengajarId);
+  const gantiRows = (gantiSemua ?? []) as { jadwal_id: string; tanggal: string; pengajar_id: string }[];
+  // Slot milikku + slot yang sesinya kugantikan (hanya yang menyangkut aku yang dikirim ke halaman ini).
+  const dipegang = new Set(gantiRows.filter((g) => g.pengajar_id === k.pengajarId).map((g) => g.jadwal_id));
+  const milik = semua.filter((j) => j.pengajar_id === k.pengajarId || dipegang.has(j.id));
+  const idMilik = new Set(milik.map((j) => j.id));
+  const ganti = gantiRows.filter((g) => idMilik.has(g.jadwal_id)).map((g) => ({ slotId: g.jadwal_id, tanggal: g.tanggal, pelatihId: g.pengajar_id }));
   const idSlot = milik.map((j) => j.id);
   const idSlotSemua = semua.map((j) => j.id);
 
@@ -107,5 +115,5 @@ export async function muatDataPelatih(k: KonteksPelatih, hariIni = hariIniJakart
   const pembayaran = pembayaranDariTagihan((tagihan ?? []) as unknown as BarisTagihanDb[], (paketSaya ?? []) as PaketMurid[], "").filter((p) => p.pengajarId === k.pengajarId);
   const pemberitahuan = ((info ?? []) as unknown as BarisInfoDb[]).map(dariBarisInfo).filter((x): x is Pemberitahuan => x !== null);
 
-  return { jadwal, pesertaTetap, murid, catatan, absensi, pengajar: (pengajar ?? []) as { id: string; nama: string }[], pembayaran, modeBagi: bagi.mode, persen: bagi.persen[k.pengajarId] ?? 0, nominal: bagi.nominal[k.pengajarId] ?? 0, gajiDibayar: bacaGajiDibayar(peng.gajiDibayar), pemberitahuan };
+  return { ganti, jadwal, pesertaTetap, murid, catatan, absensi, pengajar: (pengajar ?? []) as { id: string; nama: string }[], pembayaran, modeBagi: bagi.mode, persen: bagi.persen[k.pengajarId] ?? 0, nominal: bagi.nominal[k.pengajarId] ?? 0, gajiDibayar: bacaGajiDibayar(peng.gajiDibayar), pemberitahuan };
 }

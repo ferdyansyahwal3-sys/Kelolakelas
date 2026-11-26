@@ -22,8 +22,8 @@ export function PromoPlatformView() {
   const totalPotongan = baris.reduce((n, r) => n + r.totalPotongan, 0);
   const nilaiNum = Number(form.nilai.replace(/\D/g, ""));
 
-  function simpan() {
-    const h = p.buatPromo({ kode: form.kode, jenis: form.jenis, nilai: form.nilai === "" ? 0 : nilaiNum, kuota: form.kuota.trim() === "" ? null : Number(form.kuota.replace(/\D/g, "")), kedaluwarsa: form.kedaluwarsa || null, berlakuBulan: Number(form.berlakuBulan) });
+  async function simpan() {
+    const h = await p.buatPromo({ kode: form.kode, jenis: form.jenis, nilai: form.nilai === "" ? 0 : nilaiNum, kuota: form.kuota.trim() === "" ? null : Number(form.kuota.replace(/\D/g, "")), kedaluwarsa: form.kedaluwarsa || null, berlakuBulan: Number(form.berlakuBulan) });
     if (!h.ok) { setGalat(h.galat); return; }
     setToast(`Promo ${form.kode.trim().toUpperCase()} dibuat.`);
     setForm(KOSONG); setGalat({}); setFormBuka(false);
@@ -76,10 +76,10 @@ export function PromoPlatformView() {
                   <td className="aksi-sel">
                     <span className="plat-aksi">
                       <button type="button" className="btn btn-2 btn-sm" aria-expanded={laporan === x.id} onClick={() => setLaporan(laporan === x.id ? null : x.id)}>Laporan</button>
-                      <button type="button" className="btn btn-2 btn-sm" onClick={() => { p.alihPromo(x.id); setToast(`${x.kode} ${x.aktif ? "dinonaktifkan" : "diaktifkan"}.`); }}>{x.aktif ? "Nonaktifkan" : "Aktifkan"}</button>
+                      <button type="button" className="btn btn-2 btn-sm" onClick={async () => { const h = await p.alihPromo(x.id); setToast(h.ok ? h.pesan : h.galat); }}>{x.aktif ? "Nonaktifkan" : "Aktifkan"}</button>
                       {hapus === x.id ? (
                         terpakai > 0 ? <span className="meta">Sudah dipakai, nonaktifkan saja <button type="button" className="link" style={{ background: "none", border: 0, cursor: "pointer" }} onClick={() => setHapus(null)}>OK</button></span> : (
-                          <><button type="button" className="btn btn-2 btn-sm" onClick={() => { p.hapusPromo(x.id); setHapus(null); setToast(`${x.kode} dihapus.`); }}>Ya, hapus</button><button type="button" className="btn btn-2 btn-sm" onClick={() => setHapus(null)}>Batal</button></>
+                          <><button type="button" className="btn btn-2 btn-sm" onClick={async () => { const h = await p.hapusPromo(x.id); setHapus(null); setToast(h.ok ? h.pesan : h.galat); }}>Ya, hapus</button><button type="button" className="btn btn-2 btn-sm" onClick={() => setHapus(null)}>Batal</button></>
                         )
                       ) : <button type="button" className="btn btn-2 btn-sm" onClick={() => setHapus(x.id)}>Hapus</button>}
                     </span>

@@ -10,6 +10,8 @@ export const ATURAN = {
   promo: { maks: 30, detik: 600 },
   undangan: { maks: 20, detik: 600 },
   masukAdmin: { maks: 10, detik: 600 },
+  lupaSandi: { maks: 5, detik: 3600 },
+  buatAkun: { maks: 10, detik: 3600 },
 } as const;
 export type AksiBatas = keyof typeof ATURAN;
 

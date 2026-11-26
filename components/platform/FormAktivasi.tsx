@@ -20,8 +20,8 @@ export function FormAktivasi({ tagihan, usaha, onSelesai, onBatal }: { tagihan: 
     setPratinjau(h.usaha.periodeBerakhir);
   }
 
-  function aktifkan() {
-    const h = aktifkanManual(tagihan.id, f);
+  async function aktifkan() {
+    const h = await aktifkanManual(tagihan.id, f);
     if (!h.ok) { setGalat(h.galat); setPratinjau(null); return; }
     onSelesai(`${tagihan.orderId} lunas. ${usaha.nama} aktif sampai ${tgl(h.usaha.periodeBerakhir)}.`);
   }

@@ -48,8 +48,8 @@ export function DetailUsahaPlatform({ id }: { id: string }) {
   const batasMurid = paket.batas.murid;
   const batasPelatih = paket.batas.pelatih;
 
-  function mulaiLihat() {
-    const h = p.mulaiLihat(id, alasan);
+  async function mulaiLihat() {
+    const h = await p.mulaiLihat(id, alasan);
     if (!h.ok) { setGalatLihat(h.galat); return; }
     setGalatLihat(""); setBukaLihat(false); setAlasan(""); info(h.pesan);
   }
@@ -197,7 +197,7 @@ export function DetailUsahaPlatform({ id }: { id: string }) {
 
         <section className="grp">
           <h2 className="h2" style={{ color: "var(--head-text)" }}>Catatan pribadi</h2>
-          <form className="surface kartu-form" onSubmit={(e) => { e.preventDefault(); const h = p.simpanCatatan(id, catatan); info(h.ok ? h.pesan : h.galat, !h.ok); }}>
+          <form className="surface kartu-form" onSubmit={async (e) => { e.preventDefault(); const h = await p.simpanCatatan(id, catatan); info(h.ok ? h.pesan : h.galat, !h.ok); }}>
             <label className="field"><span className="label l2">Hanya kamu yang melihat ini</span>
               <textarea value={catatan} maxLength={CATATAN_USAHA_MAKS} onChange={(e) => setCatatan(e.target.value)} placeholder="Contoh: minta fitur laporan bulanan, ingatkan upgrade Pro setelah 30 murid" />
               <span className="meta" style={{ textAlign: "right" }}>{catatan.length}/{CATATAN_USAHA_MAKS}</span></label>

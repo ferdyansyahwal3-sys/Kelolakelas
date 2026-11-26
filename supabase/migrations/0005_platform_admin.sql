@@ -1,4 +1,4 @@
--- DRAF SKEMA PANEL PEMILIK PLATFORM. BELUM DITERAPKAN ke database; tinjau dulu sebelum dijalankan.
+-- SKEMA PANEL PEMILIK PLATFORM (ditinjau ulang 2026-11-26, lalu diterapkan). Fungsi panel ada di 0021_platform_fungsi.sql.
 -- Prinsip (pelajaran dari admin Journalyze):
 --   * Tidak ada proxy service-role untuk panel ini dan tidak ada email admin di kode. Admin = baris di platform_admins.
 --   * Semua tabel di sini terkunci RLS tanpa policy untuk anon/authenticated biasa. Hanya admin platform (is_platform_admin) yang lolos.
@@ -58,7 +58,7 @@ alter table platform_audit_log enable row level security;
 
 create policy notes_admin on platform_tenant_notes for all using (is_platform_admin()) with check (is_platform_admin());
 create policy audit_baca_admin on platform_audit_log for select using (is_platform_admin());
-create policy audit_tambah_admin on platform_audit_log for insert with check (is_platform_admin() and admin_id = auth.uid());
+-- Baris audit hanya ditambah lewat fungsi security definer di 0021 (platform_lihat, platform_aktivasi, platform_catat_audit): tanpa policy insert untuk klien.
 -- Sengaja tidak ada policy update/delete pada platform_audit_log.
 
 -- Tabel langganan dari 0001 (subscriptions, subscription_invoices, payment_events, platform_transactions, platform_promo_codes, reminder_logs)

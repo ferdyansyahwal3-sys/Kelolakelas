@@ -28,3 +28,24 @@ export async function absenSesi(jadwalId: string, tanggal: string, muridId: stri
   const { error } = await k.db.rpc("absen", { p_jadwal: jadwalId, p_tanggal: tanggal, p_murid: muridId, p_status: status });
   return error ? { ok: false, pesan: pesanGalat(error) } : { ok: true };
 }
+
+function pesanGanti(e: { message?: string } | null): string {
+  const m = e?.message ?? "";
+  if (m.includes("pelatih_bentrok")) return "Pelatih itu sudah mengajar sesi lain di jam yang bentrok pada tanggal itu.";
+  if (m.includes("pelatih_tidak_ditemukan")) return "Pelatih tidak ditemukan atau tidak aktif.";
+  if (m.includes("sesi_lewat")) return "Sesi yang sudah lewat tidak bisa dialihkan.";
+  if (m.includes("tanggal_tidak_sesuai")) return "Slot tidak ada di tanggal itu.";
+  if (m.includes("slot_tidak_ditemukan")) return "Slot tidak ditemukan.";
+  if (m.includes("bukan_pemilik")) return "Hanya pemilik usaha yang bisa mengganti pelatih.";
+  return "Belum tersimpan. Coba lagi sebentar.";
+}
+
+/** Ganti pelatih sekali untuk satu sesi (slot + tanggal). pengajarId null = kembalikan ke pelatih tetap. Aturan diulang di fungsi database. */
+export async function gantiPelatihSekali(jadwalId: string, tanggal: string, pengajarId: string | null): Promise<HasilAbsen> {
+  const k = await ambilKonteksOwner();
+  if (!k) return { ok: false, pesan: TAK_MASUK };
+  if (!bolehUbahData(k.akses.akses)) return { ok: false, pesan: TUTUP };
+  if (!UUID.test(String(jadwalId)) || !TANGGAL.test(String(tanggal)) || (pengajarId !== null && !UUID.test(String(pengajarId)))) return { ok: false, pesan: "Data tidak valid." };
+  const { error } = await k.db.rpc("ganti_pelatih_set", { p_jadwal: jadwalId, p_tanggal: tanggal, p_pengajar: pengajarId });
+  return error ? { ok: false, pesan: pesanGanti(error) } : { ok: true };
+}

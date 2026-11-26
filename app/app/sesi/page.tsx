@@ -8,20 +8,21 @@ import { hariIniJakarta } from "@/lib/langgananData";
 import { labelTanggal, tambahHari, type Absensi } from "@/lib/sesi";
 import { ambilKonteksOwner } from "@/lib/supabase/konteks";
 import { muatDaftarMurid } from "@/lib/supabase/muridData";
-import { absenSesi } from "./actions";
+import { absenSesi, gantiPelatihSekali } from "./actions";
 
 export default async function Sesi() {
   const k = await ambilKonteksOwner();
   if (!k) redirect("/masuk?lanjut=/app/sesi");
 
   const hariIni = hariIniJakarta();
-  const [{ data: jadwal, error }, { data: pengajar }, { data: peserta }, { data: sesi }, muridDb] = await Promise.all([
+  const [{ data: jadwal, error }, { data: pengajar }, { data: peserta }, { data: sesi }, muridDb, { data: gantiRows }] = await Promise.all([
     k.db.from("jadwal_template").select("id, pengajar_id, hari, jam_mulai, durasi_menit, nama, kuota, lokasi").eq("tenant_id", k.tenant.id),
     k.db.from("pengajar").select("id, nama").eq("tenant_id", k.tenant.id).eq("aktif", true).order("nama"),
     k.db.from("peserta_tetap").select("jadwal_id, murid_id").eq("tenant_id", k.tenant.id),
     k.db.from("sesi").select("jadwal_id, murid_id, tanggal, status").eq("tenant_id", k.tenant.id).not("jadwal_id", "is", null)
       .gte("tanggal", tambahHari(hariIni, -60)).lte("tanggal", tambahHari(hariIni, 60)).in("status", ["hadir", "izin", "alpa"]),
     muatDaftarMurid(k),
+    k.db.from("ganti_pelatih").select("jadwal_id, tanggal, pengajar_id").eq("tenant_id", k.tenant.id).gte("tanggal", tambahHari(hariIni, -60)),
   ]);
   if (error) console.error("[sesi]", error.code, error.message);
 
@@ -34,6 +35,7 @@ export default async function Sesi() {
   const absensiAwal: Absensi = {};
   for (const s of (sesi ?? []) as { jadwal_id: string; murid_id: string; tanggal: string; status: "hadir" | "izin" | "alpa" }[]) absensiAwal[`${s.jadwal_id}|${s.tanggal}|${s.murid_id}`] = s.status;
   const murid = muridDb.map((m) => ({ id: m.id, nama: m.nama, kategori: m.kategori, sisaSesi: m.sisaSesi, totalSesi: m.totalSesi, berlakuSampai: m.berlakuSampai, aktif: m.aktif, bayar: m.bayar }));
+  const gantiAwal = ((gantiRows ?? []) as { jadwal_id: string; tanggal: string; pengajar_id: string }[]).map((g) => ({ slotId: g.jadwal_id, tanggal: g.tanggal, pelatihId: g.pengajar_id }));
   const istilah = getIstilah(k.tenant.istilah);
 
   return (
@@ -48,6 +50,8 @@ export default async function Sesi() {
         absensiAwal={absensiAwal}
         istilah={{ murid: istilah.murid, sesi: istilah.sesi }}
         aksiAbsen={bolehUbahData(k.akses.akses) ? absenSesi : undefined}
+        gantiAwal={gantiAwal}
+        aksiGanti={bolehUbahData(k.akses.akses) ? gantiPelatihSekali : undefined}
       />
     </main>
   );

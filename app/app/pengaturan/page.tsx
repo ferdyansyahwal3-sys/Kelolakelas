@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { PengaturanForm } from "@/components/PengaturanForm";
+import { NamaSapaanForm } from "@/components/NamaSapaanForm";
 import { bolehUbahData } from "@/lib/langganan";
 import { dariTenant, type BarisTenant } from "@/lib/pengaturanDb";
 import { KOLOM_TAGIHAN, dariBarisTagihan, type BarisTagihanDb } from "@/lib/tagihanDb";
@@ -24,6 +25,7 @@ export default async function PengaturanUsaha() {
   return (
     <main className="scroll kolom2" style={{ paddingTop: 20 }}>
       <PageHeader title="Pengaturan" back="/app/lainnya" />
+      <NamaSapaanForm awal={k.namaPengguna === "Pemilik" ? "" : k.namaPengguna} />
       <PengaturanForm awal={dariTenant(t as unknown as BarisTenant, rekening)} murid={murid} tagihan={daftarTagihan} simpan={bolehUbahData(k.akses.akses) ? simpanPengaturan : undefined} />
     </main>
   );

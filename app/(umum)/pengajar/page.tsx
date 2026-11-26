@@ -21,7 +21,7 @@ export default async function HalamanPelatih() {
       {k.pemilik && <Tautan href="/app" className="side-balik" title="Kembali ke panel owner"><Icon name="home" /><span>Panel owner</span></Tautan>}
       <main className="scroll" style={{ paddingTop: 20 }}>
         <PageHeader title="Jadwal saya" back={k.pemilik ? "/app" : undefined} chip={`${k.nama} · ${labelTanggal(hariIni)}`} />
-        <PelatihApp saya={{ id: k.pengajarId, nama: k.nama }} hariIni={hariIni} jadwal={d.jadwal} pesertaTetap={d.pesertaTetap} murid={murid} catatanAwal={d.catatan} absensiAwal={d.absensi}
+        <PelatihApp saya={{ id: k.pengajarId, nama: k.nama }} hariIni={hariIni} jadwal={d.jadwal} pesertaTetap={d.pesertaTetap} murid={murid} catatanAwal={d.catatan} absensiAwal={d.absensi} gantiAwal={d.ganti}
           pemberitahuan={d.pemberitahuan} pengajar={d.pengajar} pembayaran={d.pembayaran} persenAwal={d.persen} nominalAwal={d.nominal} dibayarAwal={d.gajiDibayar} modeBagi={d.modeBagi}
           aksi={k.bolehUbah ? { absen: absenPelatih, catatan: catatanPelatih, kirimInfo: kirimInfoPelatih, hapusInfo: hapusInfoPelatih } : undefined} />
         <TombolKeluar />

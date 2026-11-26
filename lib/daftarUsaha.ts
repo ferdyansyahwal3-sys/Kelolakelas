@@ -8,6 +8,7 @@ export const SANDI_MIN = 8;
 export const SANDI_MAKS = 72; // batas aman bcrypt di Supabase Auth
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export const EMAIL_VALID = EMAIL;
 
 /** Alamat yang dipakai sistem selain yang ada di lib/pengaturan.ts. Daftar yang sama dijaga di SQL (0006). */
 const RESERVED_TAMBAHAN = ["daftar", "syarat", "privasi", "undang", "support", "bantuan", "kelolakelas", "www", "auth", "_next"];
