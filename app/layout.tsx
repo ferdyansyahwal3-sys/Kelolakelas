@@ -1,12 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Inter_Tight, Archivo } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { SplashAwal } from "@/components/SplashAwal";
 import { BarNavigasi } from "@/components/BarNavigasi";
 
-const inter = Inter({ subsets: ["latin"], variable: "--f-inter" });
-const tight = Inter_Tight({ subsets: ["latin"], weight: ["300", "500", "600"], variable: "--f-tight" });
-const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--f-archivo" });
+// Font lokal (variable, subset latin, lisensi OFL dari @fontsource-variable): build tidak lagi mengambil CSS Google Fonts.
+const inter = localFont({ src: "./fonts/inter-latin-wght-normal.woff2", weight: "100 900", display: "swap", variable: "--f-inter" });
+const tight = localFont({ src: "./fonts/inter-tight-latin-wght-normal.woff2", weight: "100 900", display: "swap", variable: "--f-tight" });
+const archivo = localFont({
+  src: "./fonts/archivo-latin-wdth-normal.woff2",
+  weight: "100 900",
+  display: "swap",
+  variable: "--f-archivo",
+  declarations: [{ prop: "font-stretch", value: "62% 125%" }],
+});
 
 export const metadata: Metadata = {
   title: "KelolaKelas",
