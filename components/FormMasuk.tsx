@@ -82,6 +82,7 @@ export function FormMasuk({ lanjut, tersambung, galatAwal = "" }: { lanjut: stri
             </div>
             <div className="auth-fld" style={{ "--i": 2 } as React.CSSProperties}>
               <label className="auth-lbl" htmlFor="masuk-sandi">Kata sandi</label>
+              <Link href="/lupa-sandi" className="auth-lupa auth-lupa-lbl">Lupa kata sandi?</Link>
               <div className="auth-pil" ref={pilSandi} data-salah={galatSandiTampil ? "ya" : undefined}>
                 <input id="masuk-sandi" ref={inSandi} type={lihat ? "text" : "password"} value={sandi} onChange={(e) => { setSandi(e.target.value); if (galatSandi) setGalatSandi(""); if (pesan) setPesan(""); }} autoComplete="current-password" maxLength={72} placeholder="Kata sandi kamu" aria-invalid={galatSandiTampil ? true : undefined} aria-describedby={galatSandiTampil ? "masuk-sandi-galat" : undefined} />
                 <button type="button" className="auth-mata" onClick={() => setLihat((v) => !v)} aria-pressed={lihat} aria-label={lihat ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}><Icon name={lihat ? "eyeoff" : "eye"} /></button>
@@ -96,6 +97,7 @@ export function FormMasuk({ lanjut, tersambung, galatAwal = "" }: { lanjut: stri
           <div className="auth-alt" style={{ "--i": 5 } as React.CSSProperties}>
             <TombolGoogle label="Masuk dengan Google" lanjut={lanjut} className="tg-btn" />
             <p className="auth-buat">Belum punya akun? <Link href="/daftar-usaha">Buat akun</Link></p>
+            <Link href="/lupa-sandi" className="auth-lupa auth-lupa-hp">Lupa kata sandi?</Link>
           </div>
         </div>
         <p className="auth-legal auth-legal-luar">Dengan masuk, kamu setuju dengan <Link href="/syarat">Syarat layanan</Link> dan <Link href="/privasi">Kebijakan privasi</Link>.</p>
