@@ -6,6 +6,7 @@ import { ambilKonteksOwner } from "@/lib/supabase/konteks";
 import { bolehUbahData } from "@/lib/langganan";
 import { hariIniJakarta, tanggalJakarta } from "@/lib/langgananData";
 import { bolehTambah } from "@/lib/paketLangganan";
+import { pesanGalatSlot } from "@/lib/slotMurid";
 import { normalisasiWa, pesanGalatMurid, validasiEditMurid, validasiMurid, type GalatMurid, type InputEditMurid, type InputMurid } from "@/lib/muridDb";
 
 const TUTUP = "Akses pengubahan data ditutup karena langgananmu belum aktif. Perpanjang di halaman Langganan.";
@@ -24,7 +25,7 @@ async function muridAktif(db: NonNullable<Awaited<ReturnType<typeof ambilKonteks
 }
 
 /** Murid baru + paketnya + tagihan pertama dalam satu fungsi database (atomik). Masukan dari browser divalidasi ulang. */
-export async function tambahMurid(masukan: InputMurid): Promise<HasilTambah> {
+export async function tambahMurid(masukan: InputMurid, jadwalId?: string | null): Promise<HasilTambah> {
   const k = await ambilKonteksOwner();
   if (!k) return { ok: false, galat: {}, pesan: TAK_MASUK };
   if (!bolehUbahData(k.akses.akses)) return { ok: false, galat: {}, pesan: TUTUP };
@@ -32,17 +33,20 @@ export async function tambahMurid(masukan: InputMurid): Promise<HasilTambah> {
   const i: InputMurid = {
     nama: String(masukan?.nama ?? "").slice(0, 100), kategori: masukan?.kategori === "dewasa" ? "dewasa" : "anak", usia: n(masukan?.usia),
     namaOrtu: String(masukan?.namaOrtu ?? "").slice(0, 100), noWa: normalisasiWa(String(masukan?.noWa ?? "")).slice(0, 30),
-    paketId: String(masukan?.paketId ?? ""), mulai: String(masukan?.mulai ?? ""), pengajarId: masukan?.pengajarId ? String(masukan.pengajarId) : null,
+    email: String(masukan?.email ?? "").trim().toLowerCase().slice(0, 130), paketId: String(masukan?.paketId ?? ""), mulai: String(masukan?.mulai ?? ""), pengajarId: masukan?.pengajarId ? String(masukan.pengajarId) : null,
   };
   const galat = validasiMurid(i, hariIniJakarta());
   if (Object.keys(galat).length > 0) return { ok: false, galat };
   if (!bolehTambah(k.plan, "murid", await muridAktif(k.db, k.tenant.id))) return { ok: false, galat: {}, pesan: pesanGalatMurid({ message: "batas_murid" }) };
 
-  const { data, error } = await k.db.rpc("tambah_murid", {
+  const slot = jadwalId ? String(jadwalId) : null;
+  if (slot && !UUID.test(slot)) return { ok: false, galat: {}, pesan: "Slot tidak valid." };
+  const { data, error } = await k.db.rpc("tambah_murid_slot", {
     p_nama: i.nama.trim(), p_kategori: i.kategori, p_usia: i.kategori === "anak" ? i.usia : null,
-    p_nama_ortu: i.kategori === "anak" ? i.namaOrtu.trim() : null, p_no_wa: i.noWa, p_paket_id: i.paketId, p_mulai: i.mulai, p_pengajar_id: i.pengajarId,
+    p_nama_ortu: i.kategori === "anak" ? i.namaOrtu.trim() : null, p_no_wa: i.noWa, p_paket_id: i.paketId, p_mulai: i.mulai, p_pengajar_id: i.pengajarId, p_jadwal: slot,
   });
-  if (error) return { ok: false, galat: {}, pesan: pesanGalatMurid(error) };
+  if (error) return { ok: false, galat: {}, pesan: /slot|bentrok/.test(error.message) ? pesanGalatSlot(error) : pesanGalatMurid(error) };
+  if (i.email) { const { error: e2 } = await k.db.rpc("simpan_email_murid", { p_murid: String(data), p_email: i.email }); if (e2) console.error("[tambahMurid:email]", e2.message); }
   return { ok: true, id: String(data) };
 }
 
@@ -81,13 +85,15 @@ export async function ubahDataMurid(id: string, masukan: InputEditMurid): Promis
   if (!m) return { ok: false, galat: {}, pesan: "Murid tidak ditemukan." };
   const kategori = m.kategori === "dewasa" ? "dewasa" : "anak";
   const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? Math.trunc(x) : null);
-  const i: InputEditMurid = { nama: String(masukan?.nama ?? "").slice(0, 100), noWa: normalisasiWa(String(masukan?.noWa ?? "")).slice(0, 30), namaOrtu: String(masukan?.namaOrtu ?? "").slice(0, 100), usia: n(masukan?.usia) };
+  const i: InputEditMurid = { nama: String(masukan?.nama ?? "").slice(0, 100), noWa: normalisasiWa(String(masukan?.noWa ?? "")).slice(0, 30), namaOrtu: String(masukan?.namaOrtu ?? "").slice(0, 100), usia: n(masukan?.usia), email: String(masukan?.email ?? "").trim().toLowerCase().slice(0, 130) };
   const galat = validasiEditMurid(i, kategori);
   if (Object.keys(galat).length > 0) return { ok: false, galat };
   const { error } = await k.db.from("murid").update({
     nama: i.nama.trim(), no_wa: i.noWa, nama_ortu: kategori === "anak" ? i.namaOrtu.trim() : null, usia: kategori === "anak" ? i.usia : null,
   }).eq("id", id).eq("tenant_id", k.tenant.id);
   if (error) return { ok: false, galat: {}, pesan: pesanGalatMurid(error) };
+  const { error: e2 } = await k.db.rpc("simpan_email_murid", { p_murid: id, p_email: i.email ?? "" });
+  if (e2) return { ok: false, galat: { email: "Email belum benar." } };
   return { ok: true };
 }
 
@@ -120,4 +126,21 @@ export async function buatLinkPortal(muridId: string): Promise<{ ok: true; token
   if (eCabut) return { ok: false, pesan: "Link belum dibuat. Coba lagi sebentar." };
   const { error } = await admin.from("portal_token").insert({ tenant_id: k.tenant.id, murid_id: muridId, token_hash: hashKode(token) });
   return error ? { ok: false, pesan: "Link belum dibuat. Coba lagi sebentar." } : { ok: true, token };
+}
+
+export type HasilSlot = { ok: true } | { ok: false; pesan: string };
+
+/** Pasang, pindah (dari -> ke), atau lepas slot tetap murid. Aturan (kuota, bentrok, sesi mendatang) dijaga fungsi database. */
+export async function ubahSlotMurid(muridId: string, aksi: "pasang" | "pindah" | "lepas", dari: string | null, ke: string | null): Promise<HasilSlot> {
+  const k = await ambilKonteksOwner();
+  if (!k) return { ok: false, pesan: TAK_MASUK };
+  if (!bolehUbahData(k.akses.akses)) return { ok: false, pesan: TUTUP };
+  const ok = (x: string | null) => typeof x === "string" && UUID.test(x);
+  if (!UUID.test(String(muridId))) return { ok: false, pesan: "Murid tidak ditemukan." };
+  let r;
+  if (aksi === "pasang" && ok(ke)) r = await k.db.rpc("pasang_slot_murid", { p_murid: muridId, p_jadwal: ke });
+  else if (aksi === "pindah" && ok(dari) && ok(ke)) r = await k.db.rpc("pindah_slot_murid", { p_murid: muridId, p_dari: dari, p_ke: ke });
+  else if (aksi === "lepas" && ok(dari)) r = await k.db.rpc("lepas_slot_murid", { p_murid: muridId, p_jadwal: dari });
+  else return { ok: false, pesan: "Pilih slotnya dulu." };
+  return r.error ? { ok: false, pesan: pesanGalatSlot(r.error) } : { ok: true };
 }

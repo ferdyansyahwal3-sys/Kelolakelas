@@ -61,7 +61,7 @@ export function LanggananOwner({ data, plan, hariIni, tagihan, sekarangMs, prati
           <div className="sum"><span className="sub">Aktif sampai</span><span>{tglPendek(berikutnya)} {berikutnya.slice(0, 4)}</span></div>
           <p className="meta" style={{ margin: 0 }}>Bayar lebih awal tidak menghanguskan sisa hari. Bayar telat dihitung mulai hari pembayaran.</p>
           <button type="button" className="btn" disabled>Bayar lewat DuitKu (segera)</button>
-          <Link href="/app/langganan/pilih" className="link" style={{ alignSelf: "center" }}>Ubah paket</Link>
+          <Link href="/app/langganan/ganti" className="link" style={{ alignSelf: "center" }}>Ganti paket atau pindah jenis</Link>
         </div>
       </section>
 

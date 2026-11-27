@@ -6,6 +6,7 @@ export interface TagihanOwner {
   nama: string;
   namaOrtu?: string;
   noWa: string;
+  email?: string;
   paket: string;
   nominal: number;
   tempo: string; // yyyy-mm-dd

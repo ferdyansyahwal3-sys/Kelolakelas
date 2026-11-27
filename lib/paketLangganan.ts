@@ -51,7 +51,7 @@ const INF = Number.POSITIVE_INFINITY;
 export const PAKET: Record<PlanKey, DefPaket> = {
   guru_mulai: {
     key: "guru_mulai", jenis: "guru_les", nama: "Mulai", tagline: "Untuk mulai merapikan jadwal dan tagihan.",
-    hargaNormal: 59_000, hargaPromo: 29_000, sorot: false,
+    hargaNormal: 59_000, hargaPromo: 32_000, sorot: false,
     batas: { pelatih: 1, murid: 10, slot: 5, paketJual: 2, rekening: 1, cabang: 1, staf: 0, wa: { mode: "tidak", kuota: null } },
     sorotan: ["10 murid aktif", "5 slot jadwal, 2 paket yang dijual", "Halaman usaha, pendaftaran, bukti bayar, absensi", "1 rekening, 1 tema", "Ekspor data kapan saja"],
   },

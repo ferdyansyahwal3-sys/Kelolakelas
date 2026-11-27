@@ -5,20 +5,22 @@ import { bolehUbahData } from "@/lib/langganan";
 import { hariIniJakarta } from "@/lib/langgananData";
 import { KOLOM_TAGIHAN, dariBarisTagihan, type BarisTagihanDb } from "@/lib/tagihanDb";
 import { ambilKonteksOwner } from "@/lib/supabase/konteks";
-import { lunasiTagihan, tolakBuktiTagihan } from "./actions";
+import { muatTemplat } from "@/lib/notifikasiServer";
+import { kirimEmailTagihan, lunasiTagihan, tolakBuktiTagihan, urlBuktiTagihan } from "./actions";
 
 export default async function Tagihan() {
   const k = await ambilKonteksOwner();
   if (!k) redirect("/masuk?lanjut=/app/tagihan");
 
   const { data, error } = await k.db.from("tagihan").select(KOLOM_TAGIHAN).eq("tenant_id", k.tenant.id).order("jatuh_tempo", { ascending: true }).limit(500);
+  const templat = await muatTemplat(k.db, k.tenant.id);
   if (error) console.error("[tagihan]", error.code, error.message);
   const daftar = ((data ?? []) as unknown as BarisTagihanDb[]).map(dariBarisTagihan).filter((t) => t !== null);
 
   return (
     <main className="scroll" style={{ paddingTop: 20 }}>
       <PageHeader title="Tagihan" icon="bill" chip={`${daftar.filter((t) => t.status === "menunggu_verifikasi").length} bukti perlu dicek`} />
-      <TagihanOwnerList awal={daftar} hariIni={hariIniJakarta()} usaha={k.tenant.nama} bolehUbah={bolehUbahData(k.akses.akses)} aksi={{ lunas: lunasiTagihan, tolak: tolakBuktiTagihan }} />
+      <TagihanOwnerList awal={daftar} hariIni={hariIniJakarta()} usaha={k.tenant.nama} templat={templat} bolehUbah={bolehUbahData(k.akses.akses)} aksi={{ lunas: lunasiTagihan, tolak: tolakBuktiTagihan, lihatBukti: urlBuktiTagihan, kirimEmail: kirimEmailTagihan }} />
     </main>
   );
 }

@@ -41,6 +41,7 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan, promoServer = f
   const [usia, setUsia] = useState("");
   const [namaOrtu, setNamaOrtu] = useState("");
   const [noWa, setNoWa] = useState("");
+  const [email, setEmail] = useState("");
   const [kode, setKode] = useState("");
   const [promoAktif, setPromoAktif] = useState<Promo | null>(null);
   const [pesanPromo, setPesanPromo] = useState("");
@@ -76,7 +77,7 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan, promoServer = f
     mulai(async () => {
       const r = await kirimPendaftaran(slug, {
         slotId: slot.id, tanggal: slot.tanggal, paketId: terpilih?.id ?? "", kategori, nama,
-        usia: usia ? Number(usia) : undefined, namaOrtu, noWa,
+        usia: usia ? Number(usia) : undefined, namaOrtu, noWa, email,
         kodePromo: promoAktif?.kode, setuju,
       });
       if (r.ok) {
@@ -173,6 +174,9 @@ export function DaftarWizard({ slug, slot, paket, promo, aturan, promoServer = f
               )}
               <Field label={kategori === "anak" ? "WhatsApp orang tua" : "Nomor WhatsApp"} galat={galat.noWa}>
                 <input value={noWa} onChange={(e) => { setNoWa(e.target.value); bersihkan("noWa"); }} inputMode="tel" autoComplete="tel" placeholder="08xxxxxxxxxx" />
+              </Field>
+              <Field label="Email (opsional)" galat={galat.email}>
+                <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); bersihkan("email"); }} inputMode="email" autoComplete="email" placeholder="untuk konfirmasi lewat email" maxLength={130} />
               </Field>
               <Field label="Kode promo atau referral (opsional)" galat={undefined}>
                 <div style={{ display: "flex", gap: 8 }}>

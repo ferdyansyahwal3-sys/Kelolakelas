@@ -419,3 +419,20 @@ export function kabarGantiLangsung(
   }];
   return { kabar, info };
 }
+
+// ---------- Permintaan yang ditutup otomatis karena owner langsung mengubah sesi yang sama ----------
+
+/** Kabar untuk pemohon: permintaan ganti pelatih / tukar jadwal-nya yang masih menunggu ditutup (database menutupnya saat owner mengganti pelatih sesi itu). Id dari id permintaan, aman dipanggil ulang. */
+export function kabarPermintaanDitutup(
+  p: { id: string; pelatihId: string; slotId: string; tanggal: string; macam: "ganti pelatih" | "tukar jadwal" },
+  k: { hariIni: string; jadwal: SlotJadwal[] },
+): KabarPelatih | null {
+  const slot = k.jadwal.find((s) => s.id === p.slotId);
+  if (!slot) return null;
+  const sesi = `${labelTanggal(p.tanggal)} ${slot.jam}`;
+  return {
+    id: `kb-${p.id}-tutup`, untukPelatihId: p.pelatihId, jenis: "ganti_langsung", tgl: k.hariIni, dibaca: false,
+    judul: `Permintaanmu untuk ${sesi} ditutup`,
+    isi: `Pemilik langsung mengubah pelatih ${slot.nama} ${sesi}, jadi permintaan ${p.macam} yang masih menunggu ikut ditutup. Lihat jadwalmu yang terbaru.`,
+  };
+}

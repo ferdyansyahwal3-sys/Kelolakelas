@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Icon } from "./Icon";
 import { linkWa } from "@/lib/acc";
+import { pesanPengingat, templatAman, type Templat } from "@/lib/notifikasi";
 import { inisial, pecahRupiah, ringkasRupiah, tglPendek } from "@/lib/format";
 import { labelMetode, ringkasan, tandaiLunas, terlambatHari, tolakBukti, type Metode, type StatusTagihan, type TagihanOwner } from "@/lib/tagihan";
 
@@ -14,9 +15,9 @@ const tab: { id: Tab; nama: string; status: StatusTagihan }[] = [
 ];
 
 type Hasil = { ok: true } | { ok: false; pesan: string };
-export interface AksiTagihan { lunas: (id: string, metode: string, tanggal: string) => Promise<Hasil>; tolak: (id: string) => Promise<Hasil> }
+export interface AksiTagihan { lunas: (id: string, metode: string, tanggal: string) => Promise<Hasil>; tolak: (id: string) => Promise<Hasil>; lihatBukti?: (id: string) => Promise<{ ok: true; url: string } | { ok: false; pesan: string }>; kirimEmail?: (id: string) => Promise<{ ok: true; pesan: string } | { ok: false; pesan: string }> }
 
-export function TagihanOwnerList({ awal, hariIni, usaha, aksi, bolehUbah = true }: { awal: TagihanOwner[]; hariIni: string; usaha: string; aksi?: AksiTagihan; bolehUbah?: boolean }) {
+export function TagihanOwnerList({ awal, hariIni, usaha, aksi, bolehUbah = true, templat }: { awal: TagihanOwner[]; hariIni: string; usaha: string; aksi?: AksiTagihan; bolehUbah?: boolean; templat?: Partial<Templat> }) {
   const [daftar, setDaftar] = useState(awal);
   const [aktif, setAktif] = useState<Tab>(awal.some((t) => t.status === "menunggu_verifikasi") ? "dicek" : "belum");
   const [buka, setBuka] = useState<string | null>(null);
@@ -51,6 +52,12 @@ export function TagihanOwnerList({ awal, hariIni, usaha, aksi, bolehUbah = true 
     info(`${t.nama} lunas, ${rp(t.nominal)}.`);
   }
 
+  async function bukaBukti(t: TagihanOwner) {
+    if (!aksi?.lihatBukti) return;
+    const r = await aksi.lihatBukti(t.id);
+    if (r.ok) window.open(r.url, "_blank", "noopener,noreferrer"); else setGalat(r.pesan);
+  }
+
   async function tolakBukti_(t: TagihanOwner) {
     if (sibuk) return;
     if (aksi) {
@@ -65,9 +72,15 @@ export function TagihanOwnerList({ awal, hariIni, usaha, aksi, bolehUbah = true 
   }
 
   function pengingat(t: TagihanOwner): string {
-    const telat = terlambatHari(t, hariIni);
-    const waktu = telat > 0 ? `sudah lewat jatuh tempo ${tglPendek(t.tempo)}` : `jatuh tempo ${tglPendek(t.tempo)}`;
-    return linkWa(t.noWa, `Halo ${t.namaOrtu ?? t.nama}, pengingat dari ${usaha}: tagihan ${rp(t.nominal)} untuk ${t.nama} ${waktu}. Terima kasih!`);
+    return linkWa(t.noWa, pesanPengingat(templatAman(templat).pengingat, { nama: t.nama, namaOrtu: t.namaOrtu, usaha, nominal: t.nominal, tempo: t.tempo, paket: t.paket }));
+  }
+
+  async function kirimEmail(t: TagihanOwner) {
+    if (sibuk || !aksi?.kirimEmail) return;
+    setSibuk(true);
+    const r = await aksi.kirimEmail(t.id);
+    setSibuk(false);
+    if (r.ok) info(r.pesan); else setGalat(r.pesan);
   }
 
   return (
@@ -124,7 +137,7 @@ export function TagihanOwnerList({ awal, hariIni, usaha, aksi, bolehUbah = true 
                       <>
                         <div className="bukti">
                           <span className="circ"><Icon name="doc" /></span>
-                          <div className="grow"><div className="name">{t.bukti.berkas}</div><div className="meta">{labelMetode[t.bukti.metode]} · diunggah {t.bukti.diunggah}</div></div>
+                          <div className="grow"><div className="name">{t.bukti.berkas}</div><div className="meta">{labelMetode[t.bukti.metode]} · diunggah {t.bukti.diunggah}</div></div>{aksi?.lihatBukti && <button type="button" className="btn btn-2 btn-sm" onClick={() => bukaBukti(t)}>Lihat</button>}
                         </div>
                         <p className="meta" style={{ margin: 0 }}>Cocokkan nominal dan nama pengirim di mutasi rekening sebelum menerima.</p>
                         <div className="aksi">
@@ -154,6 +167,7 @@ export function TagihanOwnerList({ awal, hariIni, usaha, aksi, bolehUbah = true 
                         <div className="aksi">
                           <button type="button" className="btn btn-sm" disabled={!bolehUbah || sibuk} onClick={() => lunas(t, metode, tanggal)}>{sibuk ? "Menyimpan…" : "Catat sudah bayar"}</button>
                           <a className="btn btn-2 btn-sm" href={pengingat(t)} target="_blank" rel="noopener noreferrer"><Icon name="wa" />Kirim pengingat</a>
+                          {aksi?.kirimEmail && t.email && <button type="button" className="btn btn-2 btn-sm" disabled={!bolehUbah || sibuk} onClick={() => kirimEmail(t)}>Kirim email</button>}
                         </div>
                       </>
                     )}

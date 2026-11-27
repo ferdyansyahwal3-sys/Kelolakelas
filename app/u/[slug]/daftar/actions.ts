@@ -64,7 +64,7 @@ export async function kirimPendaftaran(slug: string, input: InputPendaftaran): P
     const { error } = await db.from("pendaftaran").insert({
       tenant_id: u.id, kode, nama: input.nama.trim(), kategori: input.kategori,
       usia: input.kategori === "anak" ? input.usia : null, nama_ortu: input.kategori === "anak" ? (input.namaOrtu ?? "").trim() : null,
-      no_wa: wa, paket_id: paket.id, jadwal_id: slot.id, tanggal_mulai: tanggal, kode_promo: promo?.kode ?? null,
+      no_wa: wa, email: (input.email ?? "").trim().toLowerCase() || null, paket_id: paket.id, jadwal_id: slot.id, tanggal_mulai: tanggal, kode_promo: promo?.kode ?? null,
       total, pengajar_id: slot.pengajarId,
     });
     if (!error) return { ok: true, kode, total };

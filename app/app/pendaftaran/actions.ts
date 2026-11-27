@@ -4,12 +4,16 @@ import { bolehUbahData } from "@/lib/langganan";
 import { bolehTambah } from "@/lib/paketLangganan";
 import { pesanGalatPendaftaran } from "@/lib/pendaftaranDb";
 import { klienAdmin } from "@/lib/supabase/server";
+import { emailAcc, emailValid, kunciAcc, pesanKeputusan } from "@/lib/notifikasi";
+import { muatTemplat } from "@/lib/notifikasiServer";
+import { kirimEmail } from "@/lib/kirimEmail";
+import { labelSlot } from "@/lib/pendaftaranDb";
 
 const TUTUP = "Akses pengubahan data ditutup karena langgananmu belum aktif. Perpanjang di halaman Langganan.";
 const TAK_MASUK = "Sesi habis atau akunmu bukan pemilik usaha. Masuk lagi.";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type HasilKeputusan = { ok: true; muridId?: string } | { ok: false; pesan: string };
+export type HasilKeputusan = { ok: true; muridId?: string; email?: string } | { ok: false; pesan: string };
 
 /** ACC = murid + paket murid + tagihan + status 'disetujui' dalam satu fungsi database (atomik, tahan klik ganda). */
 export async function setujuiPendaftaran(id: string): Promise<HasilKeputusan> {
@@ -23,7 +27,24 @@ export async function setujuiPendaftaran(id: string): Promise<HasilKeputusan> {
 
   const { data, error } = await k.db.rpc("setujui_pendaftaran", { p_id: id });
   if (error) return { ok: false, pesan: pesanGalatPendaftaran(error) };
-  return { ok: true, muridId: String(data) };
+  return { ok: true, muridId: String(data), email: await emailKonfirmasiAcc(k, id) };
+}
+
+/** Best effort: gagal kirim email tidak membatalkan ACC (sudah tersimpan). Hasilnya jadi keterangan di layar. */
+async function emailKonfirmasiAcc(k: NonNullable<Awaited<ReturnType<typeof ambilKonteksOwner>>>, id: string): Promise<string | undefined> {
+  try {
+    const { data } = await k.db.from("pendaftaran").select("id, nama, email, total, tanggal_mulai, jadwal_template(hari, jam_mulai)").eq("tenant_id", k.tenant.id).eq("id", id).maybeSingle();
+    const d = data as unknown as { id: string; nama: string; email: string | null; total: number | null; tanggal_mulai: string | null; jadwal_template: { hari: number; jam_mulai: string } | { hari: number; jam_mulai: string }[] | null } | null;
+    if (!d || !emailValid(d.email)) return undefined;
+    const templat = await muatTemplat(k.db, k.tenant.id);
+    const jt = Array.isArray(d.jadwal_template) ? d.jadwal_template[0] ?? null : d.jadwal_template;
+    const isi = emailAcc(k.tenant.nama, templat, { nama: d.nama, slot: labelSlot(d.tanggal_mulai, jt), total: d.total ?? 0 });
+    const h = await kirimEmail({ tenantId: k.tenant.id, jenis: "konfirmasi_acc", kunci: kunciAcc(d.id), ke: String(d.email), isi, pendaftaranId: d.id });
+    return h.ok ? `Email konfirmasi terkirim ke ${d.email}.` : h.status === "duplikat" ? undefined : `Email konfirmasi belum terkirim: ${h.pesan}`;
+  } catch (e) {
+    console.error("[emailKonfirmasiAcc]", e);
+    return undefined;
+  }
 }
 
 export async function tolakPendaftaran(id: string): Promise<HasilKeputusan> {

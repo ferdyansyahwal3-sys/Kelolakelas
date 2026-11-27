@@ -7,6 +7,7 @@ export interface InputPendaftaran {
   usia?: number;
   namaOrtu?: string;
   noWa: string;
+  email?: string;
   kodePromo?: string;
   setuju: boolean;
 }
@@ -31,6 +32,8 @@ export function validasiPendaftaran(i: InputPendaftaran): Galat {
     if (!i.usia || i.usia < 2 || i.usia > 17) g.usia = "Isi usia anak (2–17).";
     if ((i.namaOrtu ?? "").trim().length < 2) g.namaOrtu = "Isi nama orang tua.";
   }
+  const em = (i.email ?? "").trim();
+  if (em !== "" && (em.length > 130 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em))) g.email = "Email belum benar.";
   if (!i.setuju) g.setuju = "Centang persetujuan aturan.";
   return g;
 }

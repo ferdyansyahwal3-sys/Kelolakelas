@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { MuridList } from "@/components/MuridList";
 import { TambahMurid } from "@/components/TambahMurid";
 import { ambilKonteksOwner } from "@/lib/supabase/konteks";
-import { muatDaftarMurid } from "@/lib/supabase/muridData";
+import { muatDaftarMurid, muatSlotPilih } from "@/lib/supabase/muridData";
 import { getIstilah, kapital } from "@/lib/istilah";
 import { bolehUbahData } from "@/lib/langganan";
 import { hariIniJakarta } from "@/lib/langgananData";
@@ -16,8 +16,9 @@ export default async function DaftarMurid() {
   const k = await ambilKonteksOwner();
   if (!k) redirect("/masuk?lanjut=/app/murid");
 
-  const [murid, { data: paket }, { data: pengajar }] = await Promise.all([
+  const [murid, slot, { data: paket }, { data: pengajar }] = await Promise.all([
     muatDaftarMurid(k),
+    muatSlotPilih(k),
     k.db.from("paket").select("id, nama, kategori, harga").eq("tenant_id", k.tenant.id).eq("aktif", true).order("harga"),
     k.db.from("pengajar").select("id, nama").eq("tenant_id", k.tenant.id).eq("aktif", true).order("nama"),
   ]);
@@ -36,6 +37,7 @@ export default async function DaftarMurid() {
         hariIni={hariIniJakarta()}
         bolehUbah={bolehUbahData(k.akses.akses)}
         batas={{ aktif, maks: Number.isFinite(maks) ? maks : null, nama: labelPlan(k.plan) }}
+        slot={slot}
         tambah={tambahMurid}
       />
       <MuridList murid={murid} linkDaftar={`/u/${k.tenant.slug}/slot`} />

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PortalMurid } from "@/components/PortalMurid";
 import { muatPortal } from "@/lib/supabase/portalData";
-import { ajukanIzin } from "./actions";
+import { ajukanIzin, kirimBuktiTagihan } from "./actions";
 import { bolehLanjut } from "@/lib/rateLimitServer";
 import { PESAN_TERLALU_SERING } from "@/lib/rateLimit";
 
@@ -28,6 +28,8 @@ export default async function Portal({ params }: { params: { slug: string; token
       slotIds={p.slotIds}
       info={p.info}
       izin={{ slug: params.slug, token: params.token, kirim: ajukanIzin }}
+      href={{ beranda: `/u/${params.slug}/murid/${params.token}`, pembayaran: `/u/${params.slug}/murid/${params.token}/pembayaran` }}
+      bukti={{ slug: params.slug, token: params.token, rekening: p.rekening, kirim: kirimBuktiTagihan }}
     />
   );
 }

@@ -21,6 +21,7 @@ export default function PortalDemo() {
       pengajarId={pengajarId}
       slotIds={slotIds}
       info={untukMurid(pemberitahuanContoh, pengajarId, slotIds)}
+      href={{ beranda: "/demo/portal", pembayaran: "/demo/portal/pembayaran" }}
     />
   );
 }

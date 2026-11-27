@@ -4,9 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Icon } from "./Icon";
 import { linkWa } from "@/lib/acc";
+import { pesanPengingat, templatAman, type Templat } from "@/lib/notifikasi";
 import { buatTokenPortal, linkPortal } from "@/lib/portal";
 import { inisial, pecahRupiah, tglPendek } from "@/lib/format";
 import { labelBayar } from "@/lib/murid";
+import { labelSlot, opsiSlot, type SlotPilih } from "@/lib/slotMurid";
 import { normalisasiWa, validasiEditMurid, type GalatMurid, type InputEditMurid } from "@/lib/muridDb";
 import type { MuridContoh, StatusBayar } from "@/lib/contoh";
 
@@ -20,22 +22,26 @@ export interface AksiMurid {
   ubahAktif: (id: string, aktif: boolean) => Promise<{ ok: true; aktif: boolean } | { ok: false; pesan: string }>;
   tambahCatatan: (id: string, teks: string) => Promise<{ ok: true; tgl: string; teks: string } | { ok: false; pesan: string }>;
   ubahData: (id: string, i: InputEditMurid) => Promise<{ ok: true } | { ok: false; galat: GalatMurid; pesan?: string }>;
+  ubahSlot: (id: string, aksi: "pasang" | "pindah" | "lepas", dari: string | null, ke: string | null) => Promise<{ ok: true } | { ok: false; pesan: string }>;
   perpanjang: (id: string, paketId: string) => Promise<{ ok: true } | { ok: false; pesan: string }>;
   buatLinkPortal: (id: string) => Promise<{ ok: true; token: string } | { ok: false; pesan: string }>;
 }
 
-export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehUbah = true, paketPilihan = [] }: { murid: MuridContoh; paket: Paket; usaha: string; slug: string; tokenAwal: string | null; aksi?: AksiMurid; bolehUbah?: boolean; paketPilihan?: Paket[] }) {
+export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehUbah = true, templat, paketPilihan = [], slotSemua, slotSaya = [] }: { slotSemua?: SlotPilih[]; slotSaya?: string[]; murid: MuridContoh; paket: Paket; usaha: string; slug: string; tokenAwal: string | null; aksi?: AksiMurid; bolehUbah?: boolean; paketPilihan?: Paket[]; templat?: Partial<Templat> }) {
   const router = useRouter();
-  const [lokal, setLokal] = useState<{ nama: string; noWa: string; namaOrtu?: string; usia?: number } | null>(null);
+  const [lokal, setLokal] = useState<{ nama: string; noWa: string; email?: string; namaOrtu?: string; usia?: number } | null>(null);
   const v = !aksi && lokal ? { ...murid, ...lokal } : murid; // tanpa `aksi` (demo) hasil edit hanya hidup di halaman
   const [editBuka, setEditBuka] = useState(false);
   const [fNama, setFNama] = useState(murid.nama);
   const [fWa, setFWa] = useState(murid.noWa);
+  const [fEmail, setFEmail] = useState(murid.email ?? "");
   const [fOrtu, setFOrtu] = useState(murid.namaOrtu ?? "");
   const [fUsia, setFUsia] = useState(murid.usia ? String(murid.usia) : "");
   const [galatEdit, setGalatEdit] = useState<GalatMurid>({});
   const [perpBuka, setPerpBuka] = useState(false);
   const [perpPaket, setPerpPaket] = useState(paketPilihan.find((p) => p.id === paket.id)?.id ?? paketPilihan[0]?.id ?? "");
+  const [slotMode, setSlotMode] = useState<null | { aksi: "pasang" | "pindah" | "lepas"; dari: string | null }>(null);
+  const [slotKe, setSlotKe] = useState("");
   const [sibuk, mulai] = useTransition();
   const [catatan, setCatatan] = useState(murid.catatan);
   const [teksBaru, setTeksBaru] = useState("");
@@ -85,7 +91,7 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehU
   }
 
   const pengingat = belumLunas
-    ? linkWa(murid.noWa, `Halo ${murid.namaOrtu ?? murid.nama}, pengingat dari ${usaha}: tagihan ${rp(belumLunas.nominal)} untuk ${murid.nama} jatuh tempo ${tglPendek(belumLunas.tempo)}. Terima kasih!`)
+    ? linkWa(murid.noWa, pesanPengingat(templatAman(templat).pengingat, { nama: murid.nama, namaOrtu: murid.namaOrtu, usaha, nominal: belumLunas.nominal, tempo: belumLunas.tempo, paket: paket.nama }))
     : null;
 
   return (
@@ -96,6 +102,7 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehU
           <div className="name" style={{ fontSize: 16 }}>{v.nama}</div>
           <div className="meta">{v.kategori === "anak" ? `Anak · ${v.usia} tahun` : "Dewasa"} · {v.pengajar}</div>
           {v.namaOrtu && <div className="meta">Orang tua: {v.namaOrtu}</div>}
+          {v.email && <div className="meta">{v.email}</div>}
         </div>
         <a className="circ" href={`https://wa.me/${v.noWa.replace(/^0/, "62")}`} target="_blank" rel="noopener noreferrer" aria-label={`Chat WA ${v.nama}`}><Icon name="wa" /></a>
       </div>
@@ -103,9 +110,9 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehU
       {(editBuka ? (
         <form className="surface kartu-form" noValidate onSubmit={(e) => {
           e.preventDefault();
-          const i: InputEditMurid = { nama: fNama, noWa: normalisasiWa(fWa), namaOrtu: fOrtu, usia: fUsia ? Number(fUsia) : null };
+          const i: InputEditMurid = { nama: fNama, noWa: normalisasiWa(fWa), email: fEmail, namaOrtu: fOrtu, usia: fUsia ? Number(fUsia) : null };
           const g = validasiEditMurid(i, murid.kategori); setGalatEdit(g); if (Object.keys(g).length > 0) return;
-          if (!aksi) { setLokal({ nama: i.nama.trim(), noWa: i.noWa, namaOrtu: murid.kategori === "anak" ? i.namaOrtu.trim() : undefined, usia: murid.kategori === "anak" ? (i.usia ?? undefined) : undefined }); setEditBuka(false); info("Data murid diperbarui (contoh, tidak disimpan)."); return; }
+          if (!aksi) { setLokal({ nama: i.nama.trim(), noWa: i.noWa, email: (i.email ?? "").trim() || undefined, namaOrtu: murid.kategori === "anak" ? i.namaOrtu.trim() : undefined, usia: murid.kategori === "anak" ? (i.usia ?? undefined) : undefined }); setEditBuka(false); info("Data murid diperbarui (contoh, tidak disimpan)."); return; }
           mulai(async () => { const r = await aksi.ubahData(murid.id, i); if (r.ok) { setEditBuka(false); info("Data murid diperbarui."); router.refresh(); } else { setGalatEdit(r.galat); if (r.pesan) info(r.pesan); } });
         }}>
           <h2 className="h2">Ubah data</h2>
@@ -117,6 +124,7 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehU
             </>
           )}
           <label className="field"><span className="label l2">WhatsApp</span><input inputMode="tel" value={fWa} onChange={(e) => { setFWa(e.target.value); setGalatEdit((g) => ({ ...g, noWa: "" })); }} maxLength={20} />{galatEdit.noWa && <span className="galat" role="alert">{galatEdit.noWa}</span>}</label>
+          <label className="field"><span className="label l2">Email (opsional)</span><input type="email" inputMode="email" value={fEmail} onChange={(e) => { setFEmail(e.target.value); setGalatEdit((g) => ({ ...g, email: "" })); }} maxLength={130} autoComplete="off" />{galatEdit.email && <span className="galat" role="alert">{galatEdit.email}</span>}</label>
           <div className="aksi"><button type="submit" className="btn btn-sm" disabled={sibuk}>{sibuk ? "Menyimpan…" : "Simpan"}</button><button type="button" className="btn btn-2 btn-sm" onClick={() => { setEditBuka(false); setGalatEdit({}); }}>Batal</button></div>
         </form>
       ) : <button type="button" className="btn btn-2 btn-sm" style={{ alignSelf: "flex-start" }} disabled={!bolehUbah} onClick={() => { setFNama(v.nama); setFWa(v.noWa); setFOrtu(v.namaOrtu ?? ""); setFUsia(v.usia ? String(v.usia) : ""); setGalatEdit({}); setEditBuka(true); }}>Ubah data</button>)}
@@ -146,6 +154,41 @@ export function MuridDetail({ murid, paket, usaha, slug, tokenAwal, aksi, bolehU
           </div>
         )}
       </section>
+
+      {aksi && slotSemua && aktif && (
+        <section className="grp">
+          <h2 className="h2">Slot tetap</h2>
+          {slotSaya.length === 0 && <p className="sub" style={{ margin: 0, fontSize: 13 }}>Murid belum terdaftar di slot mana pun.</p>}
+          {slotSaya.length > 0 && (
+            <div className="surface batas">
+              {slotSaya.map((id) => { const s = slotSemua.find((x) => x.id === id); if (!s) return null; return (
+                <div key={id} className="item"><div className="grow"><div className="name">{labelSlot(s)}</div><div className="meta">{s.pengajar}</div></div>
+                  <button type="button" className="btn btn-2 btn-sm" disabled={!bolehUbah || sibuk} onClick={() => { setSlotMode({ aksi: "pindah", dari: id }); setSlotKe(""); }}>Pindah</button>
+                  <button type="button" className="btn btn-2 btn-sm" disabled={!bolehUbah || sibuk} onClick={() => setSlotMode({ aksi: "lepas", dari: id })}>Lepas</button></div>
+              ); })}
+            </div>
+          )}
+          {!slotMode && <button type="button" className="btn btn-2 btn-sm" style={{ alignSelf: "flex-start" }} disabled={!bolehUbah || sibuk} onClick={() => { setSlotMode({ aksi: "pasang", dari: null }); setSlotKe(""); }}>Tambah ke slot</button>}
+          {slotMode && (
+            <div className="surface kartu-form">
+              {slotMode.aksi === "lepas" ? (
+                <p style={{ margin: 0 }}>Lepas {murid.nama} dari slot ini? Sesi terjadwal dan izin mulai hari ini dihapus; riwayat hadir/alpa tetap. Sisa sesi paket tidak berubah.</p>
+              ) : (
+                <label className="field"><span className="label l2">{slotMode.aksi === "pindah" ? "Pindah ke slot" : "Tambah ke slot"}</span>
+                  <select value={slotKe} onChange={(e) => setSlotKe(e.target.value)}>
+                    <option value="">Pilih slot</option>
+                    {opsiSlot(slotSemua, slotSaya, slotMode.dari).map((s) => <option key={s.id} value={s.id} disabled={!!s.alasan}>{labelSlot(s)} · {s.pengajar}{s.alasan ? ` · ${s.alasan}` : ""}</option>)}
+                  </select>
+                  {slotMode.aksi === "pindah" && <span className="meta">Mulai hari ini: sesi terjadwal dan izin di slot lama dihapus, riwayat hadir/alpa tetap.</span>}</label>
+              )}
+              <div className="aksi">
+                <button type="button" className="btn btn-sm" disabled={sibuk || (slotMode.aksi !== "lepas" && !slotKe)} onClick={() => mulai(async () => { const r = await aksi.ubahSlot(murid.id, slotMode.aksi, slotMode.dari, slotMode.aksi === "lepas" ? null : slotKe); if (r.ok) { setSlotMode(null); info(slotMode.aksi === "lepas" ? "Murid dilepas dari slot." : slotMode.aksi === "pindah" ? "Slot murid dipindah." : "Murid ditambahkan ke slot."); router.refresh(); } else info(r.pesan); })}>{sibuk ? "Memproses…" : slotMode.aksi === "lepas" ? "Ya, lepas" : "Simpan"}</button>
+                <button type="button" className="btn btn-2 btn-sm" onClick={() => setSlotMode(null)}>Batal</button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="grp">
         <h2 className="h2">Link portal murid</h2>

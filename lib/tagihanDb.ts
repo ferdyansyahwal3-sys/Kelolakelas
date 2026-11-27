@@ -16,11 +16,11 @@ export interface BarisTagihanDb {
   dibuat_pada: string;
   murid_id: string;
   paket_id: string | null;
-  murid: Satu<{ nama: string; nama_ortu: string | null; no_wa: string | null }>;
+  murid: Satu<{ nama: string; nama_ortu: string | null; no_wa: string | null; email?: string | null }>;
   paket: Satu<{ nama: string }>;
 }
 
-export const KOLOM_TAGIHAN = "id, nominal, status, jatuh_tempo, metode, catatan, bukti_url, dibayar_pada, dibuat_pada, murid_id, paket_id, murid(nama, nama_ortu, no_wa), paket(nama)";
+export const KOLOM_TAGIHAN = "id, nominal, status, jatuh_tempo, metode, catatan, bukti_url, dibayar_pada, dibuat_pada, murid_id, paket_id, murid(nama, nama_ortu, no_wa, email), paket(nama)";
 const satu = <T,>(x: Satu<T>): T | null => (Array.isArray(x) ? x[0] ?? null : x ?? null);
 const METODE: Metode[] = ["tunai", "transfer", "qris"];
 const STATUS: StatusTagihan[] = ["belum", "menunggu_verifikasi", "lunas"];
@@ -37,6 +37,7 @@ export function dariBarisTagihan(b: BarisTagihanDb): TagihanOwner | null {
     nama: m.nama,
     namaOrtu: m.nama_ortu ?? undefined,
     noWa: m.no_wa ?? "",
+    email: m.email ?? undefined,
     paket: satu(b.paket)?.nama ?? "Paket dihapus",
     nominal: b.nominal,
     tempo: b.jatuh_tempo ?? tanggalJakarta(b.dibuat_pada),

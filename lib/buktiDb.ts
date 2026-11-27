@@ -24,3 +24,14 @@ export function periksaBukti(ukuran: number, isi: Uint8Array): { ok: true; jenis
 
 export const pathBukti = (tenantId: string, pendaftaranId: string, uuid: string, ext: string) => `${tenantId}/${pendaftaranId}/${uuid}.${ext}`;
 export const BUKTI_MAKS_PER_PENDAFTARAN = 3;
+
+/** Bukti bayar TAGIHAN dari portal murid (0030): path tetap diawali tenant_id supaya cocok aturan fungsi database. */
+export const pathBuktiTagihan = (tenantId: string, tagihanId: string, uuid: string, ext: string) => `${tenantId}/tagihan/${tagihanId}/${uuid}.${ext}`;
+
+export function pesanGalatBuktiTagihan(e: { message?: string } | null | undefined): string {
+  const m = e?.message ?? "";
+  if (m.includes("tagihan_tidak_menunggu_bayar")) return "Tagihan ini sudah dibayar atau buktinya sedang dicek pemilik.";
+  if (m.includes("tagihan_tidak_ditemukan")) return "Tagihan tidak ditemukan.";
+  if (m.includes("rekening_tidak_valid")) return "Pilih rekening tujuan transfer.";
+  return "Bukti belum tersimpan. Coba lagi sebentar.";
+}

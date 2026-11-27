@@ -4,12 +4,14 @@ import { bolehUbahData } from "@/lib/langganan";
 import { kodeUndangan, validasiUndangan } from "@/lib/pengajar";
 import { pesanGalatPengajar } from "@/lib/pengajarDb";
 import { ambilKonteksOwner } from "@/lib/supabase/konteks";
+import { emailUndangan, kunciUndangan } from "@/lib/notifikasi";
+import { asalSitus, kirimEmail } from "@/lib/kirimEmail";
 
 const TUTUP = "Akses pengubahan data ditutup karena langgananmu belum aktif. Perpanjang di halaman Langganan.";
 const TAK_MASUK = "Sesi habis atau akunmu bukan pemilik usaha. Masuk lagi.";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type HasilUndang = { ok: true; id: string; kode: string } | { ok: false; pesan: string; galat?: Record<string, string> };
+export type HasilUndang = { ok: true; id: string; kode: string; email?: string } | { ok: false; pesan: string; galat?: Record<string, string> };
 export type HasilBiasa = { ok: true } | { ok: false; pesan: string };
 
 async function pemilik() {
@@ -30,7 +32,12 @@ export async function undangPengajar(i: { nama: string; email: string }): Promis
   if (Object.keys(galat).length > 0) return { ok: false, pesan: "Periksa isian undangan.", galat };
   const kode = kodeUndangan();
   const { data, error } = await k.db.rpc("buat_undangan", { p_nama: masukan.nama.trim(), p_email: masukan.email.trim().toLowerCase(), p_hash: hashKode(kode) });
-  return error ? { ok: false, pesan: pesanGalatPengajar(error) } : { ok: true, id: String(data), kode };
+  if (error) return { ok: false, pesan: pesanGalatPengajar(error) };
+  // Best effort: undangan sudah tersimpan; kode tetap ditampilkan ke pemilik apa pun hasil email.
+  const hash = hashKode(kode);
+  const h = await kirimEmail({ tenantId: k.tenant.id, jenis: "undangan_pelatih", kunci: kunciUndangan(String(data), hash), ke: masukan.email, isi: emailUndangan(k.tenant.nama, { namaPelatih: masukan.nama.trim(), kode, link: `${asalSitus()}/undang/${kode}`, berlakuHari: 14 }) });
+  const email = h.ok ? `Email undangan terkirim ke ${masukan.email.trim().toLowerCase()}.` : h.status === "tanpa_kunci" ? undefined : `Email undangan belum terkirim: ${h.pesan}`;
+  return { ok: true, id: String(data), kode, email };
 }
 
 export async function batalkanUndangan(id: string): Promise<HasilBiasa> {

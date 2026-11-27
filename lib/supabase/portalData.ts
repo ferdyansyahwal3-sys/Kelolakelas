@@ -10,11 +10,15 @@ import { sesiBerikutnya, type SesiBerikutnya } from "../portalDb";
 import { tokenValid } from "../portal";
 import { tambahHari } from "../sesi";
 import { klienAdmin } from "./server";
+import { rekeningPublik } from "./publikData";
+import type { Rekening } from "../rekening";
 
 export interface DataPortal {
   tenantId: string; muridId: string; usaha: string;
   data: { nama: string; pengajar: string; paket: string; sisa: number; total: number; berlakuSampai: string; aktif: boolean; riwayat: { tgl: string; status: "hadir" | "izin" | "alpa" }[]; tagihan: { id: string; nominal: number; status: "lunas" | "belum" | "menunggu_verifikasi"; tempo: string }[]; catatan: { tgl: string; teks: string }[]; berikutnya: SesiBerikutnya | null };
   pengajarId: string; slotIds: string[]; info: Pemberitahuan[]; batasIzinJam: number; sekarang: string;
+  /** Rekening tujuan transfer usaha (untuk unggah bukti bayar tagihan). */
+  rekening: Rekening[];
 }
 
 /** Token → (tenant, murid). Token tidak valid, tak dikenal, dicabut, atau milik usaha lain = null (404 yang sama; tidak ada petunjuk). */
@@ -69,5 +73,6 @@ export async function muatPortal(slug: string, token: string): Promise<DataPorta
     tenantId: c.tenantId, muridId: c.muridId, usaha: c.usaha,
     data: { nama: murid.nama.split(" ")[0] ?? murid.nama, pengajar: murid.pengajar, paket: pk?.nama ?? "-", sisa: murid.sisaSesi, total: murid.totalSesi, berlakuSampai: murid.berlakuSampai, aktif: murid.aktif, riwayat: murid.riwayat, tagihan: murid.tagihan, catatan: murid.catatan, berikutnya: sesiBerikutnya(slots, hariIni, jam, tutup, izin, nama) },
     pengajarId, slotIds, info: untukMurid(semuaInfo, pengajarId, slotIds, hariIni), batasIzinJam: batas, sekarang: new Date().toISOString(),
+    rekening: await rekeningPublik(c.tenantId),
   };
 }

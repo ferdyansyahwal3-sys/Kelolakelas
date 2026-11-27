@@ -6,9 +6,11 @@ import { bolehUbahData, hitungAkses } from "../langganan";
 import { dataLangganan, hariIniJakarta, tanggalJakarta } from "../langgananData";
 import { KOLOM_MURID, dariBarisMurid, type BarisCatatanDb, type BarisMuridDb, type BarisSesiDb } from "../muridDb";
 import { dariBarisInfo, KOLOM_INFO, type BarisInfoDb } from "../pemberitahuanDb";
-import type { Pemberitahuan } from "../pemberitahuan";
+import type { KabarPelatih, Pemberitahuan } from "../pemberitahuan";
+import type { PengajuanTukar, PermintaanGanti } from "../pelatih";
+import { KOLOM_KABAR, KOLOM_MINTA, KOLOM_PENGGANTI, KOLOM_PINDAH, KOLOM_TUKAR, aturanPenggantiUsaha, dariBarisKabar, dariBarisMinta, dariBarisPengganti, dariBarisPindah, dariBarisTukar, type BarisKabarDb, type BarisMintaDb, type BarisPenggantiDb, type BarisPindahDb, type BarisTukarDb } from "../permintaanDb";
 import { geserBulan, type Pembayaran } from "../rekap";
-import type { Absensi } from "../sesi";
+import type { Absensi, Pengganti, PindahJadwal } from "../sesi";
 import { KOLOM_TAGIHAN, bacaBagiHasil, bacaGajiDibayar, pembayaranDariTagihan, type BarisTagihanDb, type PaketMurid } from "../tagihanDb";
 import { klienAdmin, klienServer } from "./server";
 import { supabaseTersambung } from "./env";
@@ -55,6 +57,14 @@ export interface DataPelatih {
   pemberitahuan: Pemberitahuan[];
   /** Penggantian pelatih sekali yang menyangkut slot pelatih ini (ia menyerahkan, atau ia yang menggantikan). */
   ganti: { slotId: string; tanggal: string; pelatihId: string }[];
+  /** B3b: permintaan ganti (milikku), pengajuan tukar (milikku), pemindahan dan murid pengganti di slot-slotku. */
+  minta: PermintaanGanti[];
+  tukar: PengajuanTukar[];
+  pindah: PindahJadwal[];
+  pengganti: Pengganti[];
+  aturanPengganti: boolean;
+  /** B3c: kabar untukku (hasil keputusan permintaan), terbaru di atas. */
+  kabar: KabarPelatih[];
 }
 
 const tanggalMin = (hariIni: string, n: number) => new Date(Date.parse(hariIni) + n * 86400000).toISOString().slice(0, 10);
@@ -66,7 +76,7 @@ export async function muatDataPelatih(k: KonteksPelatih, hariIni = hariIniJakart
   const [{ data: jad }, { data: pengajar }, { data: t }, { data: gantiSemua }] = await Promise.all([
     db.from("jadwal_template").select("id, pengajar_id, hari, jam_mulai, durasi_menit, nama, kuota, lokasi").eq("tenant_id", k.tenantId),
     db.from("pengajar").select("id, nama").eq("tenant_id", k.tenantId).eq("aktif", true).order("nama"),
-    db.from("tenants").select("pengaturan").eq("id", k.tenantId).maybeSingle(),
+    db.from("tenants").select("pengaturan, kategori").eq("id", k.tenantId).maybeSingle(),
     db.from("ganti_pelatih").select("jadwal_id, tanggal, pengajar_id").eq("tenant_id", k.tenantId).gte("tanggal", tanggalMin(hariIni, -60)),
   ]);
   const semua = (jad ?? []) as unknown as BarisJadwalDb[];
@@ -79,6 +89,17 @@ export async function muatDataPelatih(k: KonteksPelatih, hariIni = hariIniJakart
   const idSlot = milik.map((j) => j.id);
   const idSlotSemua = semua.map((j) => j.id);
 
+  const adaSlot = idSlot.length > 0;
+  const slotIn = adaSlot ? idSlot : ["00000000-0000-0000-0000-000000000000"];
+  const [{ data: mintaRows }, { data: tukarRows }, { data: pindahRows }, { data: penggantiRows }, { data: kabarRows }] = await Promise.all([
+    db.from("minta_ganti").select(KOLOM_MINTA).eq("tenant_id", k.tenantId).or(`dari_id.eq.${k.pengajarId},ke_id.eq.${k.pengajarId}`).gte("tanggal", tanggalMin(hariIni, -60)),
+    db.from("tukar_jadwal").select(KOLOM_TUKAR).eq("tenant_id", k.tenantId).eq("pelatih_id", k.pengajarId).gte("tanggal_asal", tanggalMin(hariIni, -60)),
+    db.from("pindah_jadwal").select(KOLOM_PINDAH).eq("tenant_id", k.tenantId).in("jadwal_id", slotIn).gte("tanggal_baru", tanggalMin(hariIni, -60)),
+    db.from("sesi_pengganti").select(KOLOM_PENGGANTI).eq("tenant_id", k.tenantId).in("jadwal_id", slotIn).gte("tanggal", tanggalMin(hariIni, -60)).lte("tanggal", tanggalMin(hariIni, 60)),
+    db.from("kabar_pelatih").select(KOLOM_KABAR).eq("tenant_id", k.tenantId).eq("untuk_pengajar_id", k.pengajarId).order("dibuat_pada", { ascending: false }).limit(50),
+  ]);
+  const pengganti = ((penggantiRows ?? []) as unknown as BarisPenggantiDb[]).map(dariBarisPengganti);
+
   const [{ data: peserta }, { data: paketSaya }] = await Promise.all([
     db.from("peserta_tetap").select("jadwal_id, murid_id").eq("tenant_id", k.tenantId).in("jadwal_id", idSlotSemua.length ? idSlotSemua : ["00000000-0000-0000-0000-000000000000"]),
     db.from("murid_paket").select("murid_id, paket_id, pengajar_id, dibuat_pada").eq("tenant_id", k.tenantId).eq("pengajar_id", k.pengajarId),
@@ -90,7 +111,7 @@ export async function muatDataPelatih(k: KonteksPelatih, hariIni = hariIniJakart
   for (const id of idSlot) pesertaTetap[id] = [];
   for (const p of semuaPeserta) if (pesertaTetap[p.jadwal_id]) pesertaTetap[p.jadwal_id]!.push(p.murid_id);
 
-  const idMurid = Array.from(new Set([...Object.values(pesertaTetap).flat(), ...((paketSaya ?? []) as { murid_id: string }[]).map((x) => x.murid_id)]));
+  const idMurid = Array.from(new Set([...Object.values(pesertaTetap).flat(), ...pengganti.map((p) => p.muridId), ...((paketSaya ?? []) as { murid_id: string }[]).map((x) => x.murid_id)]));
   const kosong = idMurid.length === 0;
   const dummy = ["00000000-0000-0000-0000-000000000000"];
   const [{ data: m }, { data: sesi }, { data: cat }, { data: tagihan }, { data: info }] = await Promise.all([
@@ -115,5 +136,12 @@ export async function muatDataPelatih(k: KonteksPelatih, hariIni = hariIniJakart
   const pembayaran = pembayaranDariTagihan((tagihan ?? []) as unknown as BarisTagihanDb[], (paketSaya ?? []) as PaketMurid[], "").filter((p) => p.pengajarId === k.pengajarId);
   const pemberitahuan = ((info ?? []) as unknown as BarisInfoDb[]).map(dariBarisInfo).filter((x): x is Pemberitahuan => x !== null);
 
-  return { ganti, jadwal, pesertaTetap, murid, catatan, absensi, pengajar: (pengajar ?? []) as { id: string; nama: string }[], pembayaran, modeBagi: bagi.mode, persen: bagi.persen[k.pengajarId] ?? 0, nominal: bagi.nominal[k.pengajarId] ?? 0, gajiDibayar: bacaGajiDibayar(peng.gajiDibayar), pemberitahuan };
+  const minta = ((mintaRows ?? []) as unknown as BarisMintaDb[]).map(dariBarisMinta).filter((x): x is PermintaanGanti => x !== null);
+  const tukar = ((tukarRows ?? []) as unknown as BarisTukarDb[]).map(dariBarisTukar).filter((x): x is PengajuanTukar => x !== null);
+  const pindah = ((pindahRows ?? []) as unknown as BarisPindahDb[]).map(dariBarisPindah);
+  const aturanPengganti = aturanPenggantiUsaha(String((t as { kategori?: string } | null)?.kategori ?? ""), t?.pengaturan);
+
+  const kabar = ((kabarRows ?? []) as unknown as BarisKabarDb[]).map(dariBarisKabar).filter((x): x is KabarPelatih => x !== null);
+
+  return { kabar, minta, tukar, pindah, pengganti, aturanPengganti, ganti, jadwal, pesertaTetap, murid, catatan, absensi, pengajar: (pengajar ?? []) as { id: string; nama: string }[], pembayaran, modeBagi: bagi.mode, persen: bagi.persen[k.pengajarId] ?? 0, nominal: bagi.nominal[k.pengajarId] ?? 0, gajiDibayar: bacaGajiDibayar(peng.gajiDibayar), pemberitahuan };
 }

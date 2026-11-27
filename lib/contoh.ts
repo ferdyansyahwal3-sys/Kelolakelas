@@ -98,6 +98,7 @@ export interface MuridContoh {
   usia?: number;
   namaOrtu?: string;
   noWa: string;
+  email?: string;
   pengajar: string;
   paketId: string;
   sisaSesi: number;

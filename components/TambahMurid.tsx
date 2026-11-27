@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Icon } from "./Icon";
 import { pecahRupiah } from "@/lib/format";
 import { kategoriTersedia } from "@/lib/paket";
+import { labelSlot, opsiSlot, type SlotPilih } from "@/lib/slotMurid";
 import { normalisasiWa, validasiMurid, type GalatMurid, type InputMurid } from "@/lib/muridDb";
 
 interface PaketPilih { id: string; nama: string; kategori: "anak" | "dewasa"; harga: number }
@@ -14,11 +15,13 @@ interface Props {
   bolehUbah: boolean;
   /** Info batas, mis. "Murid aktif: 3 dari 10 (Guru Les Mulai)". null = tak terbatas. */
   batas: { aktif: number; maks: number | null; nama: string };
-  tambah: (i: InputMurid) => Promise<{ ok: true; id: string } | { ok: false; galat: GalatMurid; pesan?: string }>;
+  /** Slot yang bisa dipilih (opsional). Tanpa ini (demo) bagian slot tidak tampil. */
+  slot?: SlotPilih[];
+  tambah: (i: InputMurid, jadwalId?: string | null) => Promise<{ ok: true; id: string } | { ok: false; galat: GalatMurid; pesan?: string }>;
 }
 const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`;
 
-export function TambahMurid({ paket, pengajar, hariIni, bolehUbah, batas, tambah }: Props) {
+export function TambahMurid({ paket, pengajar, hariIni, bolehUbah, batas, slot, tambah }: Props) {
   const router = useRouter();
   const tersedia = kategoriTersedia(paket.map((p) => ({ kategori: p.kategori, aktif: true })));
   const [buka, setBuka] = useState(false);
@@ -27,9 +30,11 @@ export function TambahMurid({ paket, pengajar, hariIni, bolehUbah, batas, tambah
   const [usia, setUsia] = useState("");
   const [ortu, setOrtu] = useState("");
   const [wa, setWa] = useState("");
+  const [email, setEmail] = useState("");
   const [paketId, setPaketId] = useState("");
   const [mulai, setMulai] = useState(hariIni);
   const [pengajarId, setPengajarId] = useState(pengajar[0]?.id ?? "");
+  const [slotId, setSlotId] = useState("");
   const [galat, setGalat] = useState<GalatMurid>({});
   const [pesan, setPesan] = useState("");
   const [sibuk, mulaiTransisi] = useTransition();
@@ -40,12 +45,12 @@ export function TambahMurid({ paket, pengajar, hariIni, bolehUbah, batas, tambah
 
   function kirim() {
     setPesan("");
-    const i: InputMurid = { nama, kategori, usia: usia ? Number(usia) : null, namaOrtu: ortu, noWa: normalisasiWa(wa), paketId, mulai, pengajarId: pengajarId || null };
+    const i: InputMurid = { nama, kategori, usia: usia ? Number(usia) : null, namaOrtu: ortu, noWa: normalisasiWa(wa), email, paketId, mulai, pengajarId: pengajarId || null };
     const g = validasiMurid(i, hariIni);
     setGalat(g);
     if (Object.keys(g).length > 0) return;
     mulaiTransisi(async () => {
-      const r = await tambah(i);
+      const r = await tambah(i, slotId || null);
       if (r.ok) router.push(`/app/murid/${r.id}`);
       else { setGalat(r.galat); setPesan(r.pesan ?? ""); }
     });
@@ -86,6 +91,8 @@ export function TambahMurid({ paket, pengajar, hariIni, bolehUbah, batas, tambah
       )}
       <label className="field"><span className="label l2">{kategori === "anak" ? "WhatsApp orang tua" : "Nomor WhatsApp"}</span>
         <input inputMode="tel" value={wa} onChange={(e) => { setWa(e.target.value); bersih("noWa"); }} placeholder="08xxxxxxxxxx" maxLength={20} /><E k="noWa" /></label>
+        <label className="field"><span className="label l2">Email (opsional)</span>
+        <input type="email" inputMode="email" value={email} onChange={(e) => { setEmail(e.target.value); bersih("email"); }} placeholder="untuk pengingat tagihan lewat email" maxLength={130} autoComplete="off" /><E k="email" /></label>
       <label className="field"><span className="label l2">Paket</span>
         <select value={paketId} onChange={(e) => { setPaketId(e.target.value); bersih("paketId"); }}>
           <option value="">Pilih paket</option>
@@ -93,6 +100,14 @@ export function TambahMurid({ paket, pengajar, hariIni, bolehUbah, batas, tambah
         </select><E k="paketId" /></label>
       <label className="field"><span className="label l2">Mulai</span>
         <input type="date" value={mulai} onChange={(e) => { setMulai(e.target.value); bersih("mulai"); }} /><E k="mulai" /></label>
+      {slot && (
+        <label className="field"><span className="label l2">Slot tetap (opsional)</span>
+          <select value={slotId} onChange={(e) => setSlotId(e.target.value)}>
+            <option value="">Tanpa slot dulu</option>
+            {opsiSlot(slot, []).map((s) => <option key={s.id} value={s.id} disabled={s.penuh}>{labelSlot(s)}{s.penuh ? " · penuh" : ""} · {s.pengajar}</option>)}
+          </select>
+          <span className="meta">Murid langsung terdaftar tetap di slot ini tiap minggu. Bisa dipindah atau dilepas nanti dari detail murid.</span></label>
+      )}
       {pengajar.length > 1 && (
         <label className="field"><span className="label l2">Pengajar</span>
           <select value={pengajarId} onChange={(e) => setPengajarId(e.target.value)}>{pengajar.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}</select><E k="pengajarId" /></label>

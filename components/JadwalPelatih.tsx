@@ -7,7 +7,7 @@ import { labelBayar } from "@/lib/murid";
 import { ajukanGanti, ALASAN_MAKS, batalkanMinta, CATATAN_MAKS, KUNCI_PINDAH, validasiCatatan, validasiTukar, type GalatMinta, type GalatTukar, type PengajuanTukar, type PermintaanGanti } from "@/lib/pelatih";
 import {
   hakPengganti, labelPekan, labelTanggal, hariPekan, ringkasHari, sesiDipindahKeluar, sesiPadaTanggal, sisaSesiKini, tambahHari,
-  tandai, tandaiSemuaHadir, type Absensi, type GantiPelatih, type Keadaan, type Konteks, type MuridSesi, type PindahJadwal, type StatusAbsen,
+  tandai, tandaiSemuaHadir, type Absensi, type GantiPelatih, type Keadaan, type Konteks, type MuridSesi, type Pengganti, type PindahJadwal, type StatusAbsen,
 } from "@/lib/sesi";
 
 export const KUNCI_CATATAN = "kk-catatan-pelatih";
@@ -30,7 +30,21 @@ interface Props {
   /** Panel asli: absen dan catatan disimpan ke database. Tanpa ini = hanya lokal (demo). */
   aksiAbsen?: (jadwalId: string, tanggal: string, muridId: string, status: StatusAbsen | null) => Promise<{ ok: true } | { ok: false; pesan: string }>;
   aksiCatatan?: (muridId: string, teks: string) => Promise<{ ok: true } | { ok: false; pesan: string }>;
+  /** Panel asli (B3b): adanya `mintaAwal` = mode database (permintaan ganti, pengajuan tukar, pemindahan, murid pengganti dari server). Tanpa itu (demo) lokal. */
+  mintaAwal?: PermintaanGanti[];
+  tukarAwal?: PengajuanTukar[];
+  pindahAwal?: PindahJadwal[];
+  penggantiAwal?: Pengganti[];
+  aturanPenggantiAwal?: boolean;
+  aksiJadwal?: {
+    ajukanMinta: (jadwalId: string, tanggal: string, keId: string, alasan: string) => Promise<AksiJ>;
+    tarikMinta: (id: string) => Promise<AksiJ>;
+    ajukanTukar: (jadwalId: string, tanggalAsal: string, tanggalBaru: string, jamBaru: string, alasan: string) => Promise<AksiJ>;
+    batalkanTukar: (id: string) => Promise<AksiJ>;
+  };
 }
+type AksiJ = { ok: true; id?: string } | { ok: false; pesan: string };
+const TUTUP_DB = "Akses pengubahan data ditutup karena langgananmu belum aktif. Hubungi pemilik usaha.";
 
 const PILIHAN: { status: StatusAbsen; label: string }[] = [
   { status: "hadir", label: "Hadir" },
@@ -39,19 +53,20 @@ const PILIHAN: { status: StatusAbsen; label: string }[] = [
 ];
 const STATUS_TUKAR = { menunggu: "Menunggu persetujuan pemilik", disetujui: "Disetujui", ditolak: "Ditolak", dibatalkan: "Pindah dibatalkan pemilik" } as const;
 
-export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, hariIni, absensiAwal, pengajar, aksiAbsen, aksiCatatan, gantiAwal }: Props) {
+export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, hariIni, absensiAwal, pengajar, aksiAbsen, aksiCatatan, gantiAwal, mintaAwal, tukarAwal, pindahAwal, penggantiAwal, aturanPenggantiAwal, aksiJadwal }: Props) {
   const [mode, setMode] = useState<"hari" | "minggu">("hari");
   const [tanggal, setTanggal] = useState(hariIni);
-  const [kead, setKead] = useState<Keadaan>({ absensi: absensiAwal, pengganti: [] });
-  const [aturanPengganti, setAturanPengganti] = useState(true);
+  const dbJ = mintaAwal !== undefined;
+  const [kead, setKead] = useState<Keadaan>({ absensi: absensiAwal, pengganti: penggantiAwal ?? [] });
+  const [aturanPengganti, setAturanPengganti] = useState(aturanPenggantiAwal ?? true);
   const [catatan, setCatatan] = useState<Catatan>(catatanAwal);
-  const [pengajuan, setPengajuan] = useState<PengajuanTukar[]>([]);
-  const [minta, setMinta] = useState<PermintaanGanti[]>([]);
+  const [pengajuan, setPengajuan] = useState<PengajuanTukar[]>(tukarAwal ?? []);
+  const [minta, setMinta] = useState<PermintaanGanti[]>(mintaAwal ?? []);
   const [bukaMinta, setBukaMinta] = useState<string | null>(null);
   const [formMinta, setFormMinta] = useState({ keId: "", alasan: "" });
   const [galatMinta, setGalatMinta] = useState<GalatMinta>({});
   const [gantiList, setGantiList] = useState<GantiPelatih[]>(gantiAwal ?? []);
-  const [pindah, setPindah] = useState<PindahJadwal[]>([]);
+  const [pindah, setPindah] = useState<PindahJadwal[]>(pindahAwal ?? []);
   const [bukaCatatan, setBukaCatatan] = useState<string | null>(null);
   const [teksCatatan, setTeksCatatan] = useState("");
   const [galatCatatan, setGalatCatatan] = useState("");
@@ -62,14 +77,17 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
 
   useEffect(() => {
     try {
-      const d = JSON.parse(localStorage.getItem("kk-pengaturan") ?? "null") as { aturan?: { sesiPengganti?: unknown } } | null;
-      if (typeof d?.aturan?.sesiPengganti === "boolean") setAturanPengganti(d.aturan.sesiPengganti);
+      if (!dbJ) {
+        const d = JSON.parse(localStorage.getItem("kk-pengaturan") ?? "null") as { aturan?: { sesiPengganti?: unknown } } | null;
+        if (typeof d?.aturan?.sesiPengganti === "boolean") setAturanPengganti(d.aturan.sesiPengganti);
+      }
       if (!aksiCatatan) {
         const c = JSON.parse(localStorage.getItem(KUNCI_CATATAN) ?? "null") as Catatan | null;
         if (c && typeof c === "object" && !Array.isArray(c)) setCatatan(c);
       }
       const g = gantiAwal ? null : (JSON.parse(localStorage.getItem(KUNCI_GANTI) ?? "null") as GantiPelatih[] | null);
       if (Array.isArray(g)) setGantiList(g.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggal === "string" && typeof x.pelatihId === "string"));
+      if (dbJ) return;
       const q = JSON.parse(localStorage.getItem(KUNCI_MINTA) ?? "null") as PermintaanGanti[] | null;
       if (Array.isArray(q)) setMinta(q);
       const t = JSON.parse(localStorage.getItem(KUNCI_TUKAR) ?? "null") as PengajuanTukar[] | null;
@@ -77,7 +95,7 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
       const pj = JSON.parse(localStorage.getItem(KUNCI_PINDAH) ?? "null") as PindahJadwal[] | null;
       if (Array.isArray(pj)) setPindah(pj.filter((x) => x && typeof x.slotId === "string" && typeof x.tanggalAsal === "string" && typeof x.tanggalBaru === "string" && typeof x.jamBaru === "string"));
     } catch {}
-  }, [aksiCatatan, gantiAwal]);
+  }, [aksiCatatan, gantiAwal, dbJ]);
 
   useEffect(() => {
     if (!toast) return;
@@ -97,7 +115,7 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
   const sudahLewat = tanggal <= hariIni;
 
   function info(teks: string, galat = false) { setToast({ teks, galat }); }
-  const simpanLokal = (kunci: string, nilai: unknown) => { try { localStorage.setItem(kunci, JSON.stringify(nilai)); } catch {} };
+  const simpanLokal = (kunci: string, nilai: unknown) => { if (dbJ) return; try { localStorage.setItem(kunci, JSON.stringify(nilai)); } catch {} };
 
   const [menyimpan, setMenyimpan] = useState(false);
 
@@ -108,7 +126,8 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
     for (const kunci of Array.from(kunciSemua)) {
       if (sebelum[kunci] === sesudah[kunci]) continue;
       const [slotId, tgl, muridId] = kunci.split("|") as [string, string, string];
-      if (!(pesertaTetap[slotId] ?? []).includes(muridId)) continue;
+      // Peserta tetap dan murid pengganti disimpan ke database (database juga memeriksa pemegang sesinya).
+      if (!(pesertaTetap[slotId] ?? []).includes(muridId) && !kead.pengganti.some((x) => x.slotId === slotId && x.tanggal === tgl && x.muridId === muridId)) continue;
       const r = await aksiAbsen(slotId, tgl, muridId, sesudah[kunci] ?? null);
       if (!r.ok) return r.pesan;
     }
@@ -157,32 +176,66 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
     setGalatTukar({});
   }
 
-  function kirimTukar(s: SlotJadwal, tgl: string) {
+  /** Mode database: kirim ke server dulu; layar berubah setelah database menerima. Galat server ditampilkan di bawah form. */
+  async function keDb<T extends AksiJ>(panggil: (a: NonNullable<Props["aksiJadwal"]>) => Promise<T>): Promise<T | null> {
+    if (!aksiJadwal) { info(TUTUP_DB, true); return null; }
+    if (menyimpan) return null;
+    setMenyimpan(true);
+    const r = await panggil(aksiJadwal);
+    setMenyimpan(false);
+    return r;
+  }
+
+  async function kirimTukar(s: SlotJadwal, tgl: string) {
     const h = validasiTukar({ slotId: s.id, tanggalAsal: tgl, ...formTukar }, hariIni, jadwalSaya, pengajuan);
     if (!h.ok) { setGalatTukar(h.galat); if (h.galat.umum) info(h.galat.umum, true); return; }
-    const baru = [...pengajuan, { ...h.pengajuan, id: `tk-${Date.now()}`, status: "menunggu" as const, pelatihId: saya.id }];
+    let idBaru = `tk-${Date.now()}`;
+    if (dbJ) {
+      const r = await keDb((a) => a.ajukanTukar(s.id, tgl, h.pengajuan.tanggalBaru, h.pengajuan.jamBaru, h.pengajuan.alasan));
+      if (!r) return;
+      if (!r.ok) { setGalatTukar({ umum: r.pesan }); info(r.pesan, true); return; }
+      if (r.id) idBaru = r.id;
+    }
+    const baru = [...pengajuan, { ...h.pengajuan, id: idBaru, status: "menunggu" as const, pelatihId: saya.id }];
     setPengajuan(baru); simpanLokal(KUNCI_TUKAR, baru);
     setBukaTukar(null); setGalatTukar({});
     info("Pengajuan tukar jadwal terkirim ke pemilik.");
   }
 
-  function kirimMinta(slotId: string, tgl: string) {
+  async function kirimMinta(slotId: string, tgl: string) {
     const h = ajukanGanti({ hariIni, jadwal, ganti: gantiList, pelatih: pengajar, permintaan: minta }, saya.id, slotId, tgl, formMinta.keId, formMinta.alasan);
     if (!h.ok) { setGalatMinta(h.galat); if (h.galat.umum) info(h.galat.umum, true); return; }
-    const baru = [...minta, { id: `mg-${Date.now()}`, ...h.permintaan }];
+    let idBaru = `mg-${Date.now()}`;
+    if (dbJ) {
+      const r = await keDb((a) => a.ajukanMinta(slotId, tgl, h.permintaan.keId, h.permintaan.alasan));
+      if (!r) return;
+      if (!r.ok) { setGalatMinta({ umum: r.pesan }); info(r.pesan, true); return; }
+      if (r.id) idBaru = r.id;
+    }
+    const baru = [...minta, { id: idBaru, ...h.permintaan }];
     setMinta(baru); simpanLokal(KUNCI_MINTA, baru);
     setBukaMinta(null); setGalatMinta({}); setFormMinta({ keId: "", alasan: "" });
     info("Permintaan ganti pelatih terkirim ke pemilik.");
   }
 
-  function tarikMinta(id: string) {
+  async function tarikMinta(id: string) {
     const h = batalkanMinta(minta, id, saya.id);
     if (!h.ok) { info(h.galat, true); return; }
+    if (dbJ) {
+      const r = await keDb((a) => a.tarikMinta(id));
+      if (!r) return;
+      if (!r.ok) { info(r.pesan, true); return; }
+    }
     setMinta(h.permintaan); simpanLokal(KUNCI_MINTA, h.permintaan);
     info("Permintaan ganti pelatih ditarik.");
   }
 
-  function batalkanTukar(id: string) {
+  async function batalkanTukar(id: string) {
+    if (dbJ) {
+      const r = await keDb((a) => a.batalkanTukar(id));
+      if (!r) return;
+      if (!r.ok) { info(r.pesan, true); return; }
+    }
     const baru = pengajuan.filter((p) => p.id !== id);
     setPengajuan(baru); simpanLokal(KUNCI_TUKAR, baru);
     info("Pengajuan tukar jadwal dibatalkan.");
@@ -291,12 +344,12 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
                 {mintaIni && (
                   <div className="pengganti-info" style={{ padding: "0 16px 12px" }}>
                     <span className="meta">Minta ganti ke <b>{namaPengajar(mintaIni.keId)}</b><br />{mintaIni.status === "menunggu" ? "Menunggu persetujuan pemilik" : "Ditolak pemilik, kamu masih memegang sesi ini"}</span>
-                    {mintaIni.status === "menunggu" && <button type="button" className="btn btn-2 btn-sm" onClick={() => tarikMinta(mintaIni.id)}>Tarik</button>}
+                    {mintaIni.status === "menunggu" && <button type="button" className="btn btn-2 btn-sm" onClick={() => void tarikMinta(mintaIni.id)}>Tarik</button>}
                   </div>
                 )}
 
                 {bukaMinta === kunciMinta && (
-                  <form className="form-tukar" onSubmit={(e) => { e.preventDefault(); kirimMinta(s.slot.id, tanggal); }} noValidate>
+                  <form className="form-tukar" onSubmit={(e) => { e.preventDefault(); void kirimMinta(s.slot.id, tanggal); }} noValidate>
                     <h3 className="h2" style={{ fontSize: 14 }}>Serahkan sesi {s.slot.jam} · {labelTanggal(tanggal)} ke pelatih lain</h3>
                     <p className="meta" style={{ margin: 0 }}>Hanya untuk sesi ini. Minggu berikutnya kamu mengajar seperti biasa. Pemilik yang memutuskan.</p>
                     <label className="field"><span className="label l2">Pelatih pengganti</span>
@@ -321,12 +374,12 @@ export function JadwalPelatih({ jadwal, pesertaTetap, murid, catatanAwal, saya, 
                 {tukar && (
                   <div className="pengganti-info" style={{ padding: "0 16px 12px" }}>
                     <span className="meta">Tukar ke <b>{labelTanggal(tukar.tanggalBaru)} · {tukar.jamBaru}</b><br />{STATUS_TUKAR[tukar.status]}</span>
-                    {tukar.status === "menunggu" && <button type="button" className="btn btn-2 btn-sm" onClick={() => batalkanTukar(tukar.id)}>Batalkan</button>}
+                    {tukar.status === "menunggu" && <button type="button" className="btn btn-2 btn-sm" onClick={() => void batalkanTukar(tukar.id)}>Batalkan</button>}
                   </div>
                 )}
 
                 {bukaTukar === kunciTukar && (
-                  <form className="form-tukar" onSubmit={(e) => { e.preventDefault(); kirimTukar(s.slot, tanggal); }} noValidate>
+                  <form className="form-tukar" onSubmit={(e) => { e.preventDefault(); void kirimTukar(s.slot, tanggal); }} noValidate>
                     <h3 className="h2" style={{ fontSize: 14 }}>Pindahkan sesi {s.slot.jam} · {labelTanggal(tanggal)}</h3>
                     <div style={{ display: "flex", gap: 12 }}>
                       <label className="field" style={{ flex: 1.3 }}><span className="label l2">Tanggal baru</span>

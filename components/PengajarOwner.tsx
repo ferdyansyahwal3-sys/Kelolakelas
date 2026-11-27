@@ -9,7 +9,7 @@ import { BATAS_PENGAJAR, bisaUndang, jatahTerpakai, kodeUndangan, validasiUndang
 interface Ringkas { murid: number; slot: number }
 type Biasa = { ok: true } | { ok: false; pesan: string };
 export interface AksiPengajar {
-  undang: (i: { nama: string; email: string }) => Promise<{ ok: true; id: string; kode: string } | { ok: false; pesan: string; galat?: Record<string, string> }>;
+  undang: (i: { nama: string; email: string }) => Promise<{ ok: true; id: string; kode: string; email?: string } | { ok: false; pesan: string; galat?: Record<string, string> }>;
   batalkan: (id: string) => Promise<Biasa>;
   ubahAktif: (id: string, aktif: boolean) => Promise<Biasa>;
 }
@@ -49,6 +49,7 @@ export function PengajarOwnerList({ awal, plan, ringkas, aksi, bolehUbah = true 
     if (Object.keys(g).length > 0) return;
     let id = `undang-${Date.now()}`;
     let url = `kelolakelas.id/undang/${kodeUndangan()}`;
+    let pesanEmail = "Undangan dibuat. Email belum dikirim, bagikan tautannya.";
     if (aksi) {
       setSibuk(true);
       const r = await aksi.undang(form);
@@ -56,11 +57,12 @@ export function PengajarOwnerList({ awal, plan, ringkas, aksi, bolehUbah = true 
       if (!r.ok) { if (r.galat) setGalat(r.galat); else info(r.pesan); return; }
       id = r.id;
       url = `${window.location.host}/undang/${r.kode}`;
+      pesanEmail = r.email ? `Undangan dibuat. ${r.email}` : "Undangan dibuat. Email belum aktif, bagikan tautannya.";
     }
     setDaftar((d) => [...d, { id, nama: form.nama.trim(), email: form.email.trim().toLowerCase(), pemilik: false, status: "menunggu" }]);
     setTautan({ nama: form.nama.trim(), url });
     setForm({ nama: "", email: "" }); setFormBuka(false);
-    info("Undangan dibuat. Email belum dikirim, bagikan tautannya.");
+    info(pesanEmail);
   }
 
   async function nonaktifkan(p: Pengajar) {

@@ -13,11 +13,13 @@ export async function GET(req: NextRequest) {
   const ke = (jalur: string) => NextResponse.redirect(new URL(jalur, origin));
   const aman = lanjutAman(searchParams.get("lanjut"));
 
-  if (!supabaseTersambung() || searchParams.get("error") || !searchParams.get("code")) return ke("/masuk?galat=google");
+  // Tautan reset kata sandi yang kedaluwarsa/dibuka di peramban lain: tampilkan pesan di /atur-sandi, bukan galat Google.
+  const gagal = aman === "/atur-sandi" ? "/atur-sandi" : "/masuk?galat=google";
+  if (!supabaseTersambung() || searchParams.get("error") || !searchParams.get("code")) return ke(gagal);
 
   const db = klienServer();
   const { data, error } = await db.auth.exchangeCodeForSession(searchParams.get("code")!);
-  if (error || !data.user) return ke("/masuk?galat=google");
+  if (error || !data.user) return ke(gagal);
 
   // Tautan reset kata sandi: sesi pemulihan langsung ke halaman sandi baru (apa pun perannya).
   if (aman === "/atur-sandi") return ke("/atur-sandi");
