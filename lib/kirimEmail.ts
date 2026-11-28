@@ -1,7 +1,9 @@
 // Server saja: kirim email lewat Resend + catat di notifikasi_log (kunci unik = tak kirim ganda). Jangan diimpor dari komponen client.
+import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { klienAdmin } from "./supabase/server";
-import { emailValid, type IsiEmail, type JenisNotif } from "./notifikasi";
+import { emailValid, LOGO_CID, type IsiEmail, type JenisNotif } from "./notifikasi";
+import { LOGO_EMAIL_PNG_BASE64 } from "./logoEmail";
 
 export type HasilEmail =
   | { ok: true; status: "terkirim" }
@@ -60,10 +62,17 @@ export async function kirimEmail(p: Param): Promise<HasilEmail> {
   }
 
   try {
+    const badan = JSON.stringify({
+      from: dariAlamat(), to: [ke], subject: p.isi.subjek, html: p.isi.html, text: p.isi.teks,
+      // Logo sebaris (CID): tampil di Gmail tanpa perlu alamat publik.
+      attachments: p.isi.html.includes(`cid:${LOGO_CID}`) ? [{ filename: "kelolakelas.png", content: LOGO_EMAIL_PNG_BASE64, content_id: LOGO_CID }] : undefined,
+    });
+    // Sidik isi di kunci: kirim ulang dengan isi sama aman (Resend mengembalikan hasil lama), isi berbeda tidak bentrok (409).
+    const sidik = createHash("sha1").update(badan).digest("hex").slice(0, 10);
     const r = await fetch(process.env.RESEND_API_URL?.trim() || "https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${kunciApi}`, "Content-Type": "application/json", "Idempotency-Key": `${p.tenantId}:${p.kunci}`.slice(0, 250) },
-      body: JSON.stringify({ from: dariAlamat(), to: [ke], subject: p.isi.subjek, html: p.isi.html, text: p.isi.teks }),
+      headers: { Authorization: `Bearer ${kunciApi}`, "Content-Type": "application/json", "Idempotency-Key": `${p.tenantId}:${p.kunci}:${sidik}`.slice(0, 250) },
+      body: badan,
     });
     if (!r.ok) {
       const t = (await r.text()).slice(0, 300);

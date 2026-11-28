@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
-import { klienServer } from "@/lib/supabase/server";
+import { klienAdmin, klienServer } from "@/lib/supabase/server";
+import { kirimStrukLangganan } from "@/lib/notifikasiLangganan";
 import { bolehLanjut } from "@/lib/rateLimitServer";
 import { adminSaatIni, muatDataPlatform, type DataPlatform } from "@/lib/supabase/platformData";
 import { ALASAN_LIHAT_MIN, CATATAN_USAHA_MAKS, validasiPromo, type GalatPromo, type InputPromo } from "@/lib/platform";
@@ -40,6 +41,8 @@ export async function aktivasiAksi(tagihanId: string, input: { tanggal: string; 
     const { data: r, error } = await db.rpc("platform_aktivasi", { p_tagihan: tagihanId, p_tanggal: input.tanggal, p_referensi: input.referensi, p_alasan: input.alasan });
     if (error) return { ok: false as const, galat: pesanDb(error.message) };
     const j = r as { periodeBerakhir: string; usaha: string; orderId: string };
+    // Struk ke pemilik: best effort. Pelunasan sudah sah; kegagalan email hanya dicatat (kunci unik mencegah kirim ganda).
+    try { await kirimStrukLangganan(klienAdmin(), tagihanId, j.periodeBerakhir); } catch (e) { console.error("[struk langganan]", e); }
     return { ok: true as const, pesan: `${j.orderId} lunas. ${j.usaha} aktif sampai ${j.periodeBerakhir}.`, data: await muatDataPlatform(db) };
   });
   return h.ok ? h : { ok: false, galat: { umum: h.galat } };

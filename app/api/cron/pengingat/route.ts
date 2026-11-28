@@ -4,6 +4,7 @@ import { klienAdmin } from "@/lib/supabase/server";
 import { hariIniJakarta } from "@/lib/langgananData";
 import { emailPengingat, kunciPengingatOtomatis, pilihUntukCron, templatAman, type TagihanCron } from "@/lib/notifikasi";
 import { kirimEmail } from "@/lib/kirimEmail";
+import { jalankanPengingatLangganan } from "@/lib/notifikasiLangganan";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ function sama(a: string, b: string): boolean {
 }
 
 /**
- * Pengingat tagihan terjadwal (H-3, hari-H, H+3). Dipanggil penjadwal (mis. Vercel Cron) dengan header
+ * Pengingat terjadwal: tagihan murid (H-3, hari-H, H+3) + langganan pemilik usaha (H-7, H-3, hari-H, H+3). Dipanggil penjadwal (mis. Vercel Cron) dengan header
  * `Authorization: Bearer <CRON_SECRET>`. Tanpa CRON_SECRET rute ini menolak semuanya. Kirim ganda dicegah oleh kunci di notifikasi_log.
  */
 export async function GET(req: Request) {
@@ -51,5 +52,7 @@ export async function GET(req: Request) {
     const h = await kirimEmail({ tenantId: kb.tenant_id, jenis: "pengingat_tagihan", kunci: kunciPengingatOtomatis(kb.id, tahap), ke: String(kb.email), isi, tagihanId: kb.id });
     if (h.ok) hitung.terkirim++; else if (h.status === "duplikat") hitung.duplikat++; else if (h.status === "gagal") hitung.gagal++; else hitung.dilewati++;
   }
-  return NextResponse.json({ ok: true, hariIni, kandidat: terpilih.length, ...hitung });
+  // Langganan KelolaKelas -> pemilik usaha (H-7, H-3, hari-H, H+3 dari akhir periode). Gagal di sini tak menggagalkan pengingat tagihan di atas.
+  const langganan = await jalankanPengingatLangganan(db, hariIni).catch((e) => { console.error("[cron langganan]", e); return null; });
+  return NextResponse.json({ ok: true, hariIni, kandidat: terpilih.length, ...hitung, langganan });
 }
