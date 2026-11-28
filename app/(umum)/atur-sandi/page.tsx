@@ -20,7 +20,7 @@ export default async function AturSandi() {
     );
   }
   return (
-    <KerangkaAuth judul="Kata sandi baru">
+    <KerangkaAuth judul="Kata sandi baru" sub={data.user.email ?? undefined}>
       <FormSandiBaru />
     </KerangkaAuth>
   );
