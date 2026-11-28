@@ -1,4 +1,4 @@
-import { perpanjangPeriode } from "./langganan";
+import { perpanjangPeriode, type Fase } from "./langganan";
 import type { PlanKey } from "./paketLangganan";
 
 export type HasilBayar = "berhasil" | "menunggu" | "gagal";
@@ -41,4 +41,13 @@ export interface TagihanLangganan {
 /** Masa aktif yang berlaku setelah tagihan ini lunas. Dibaca dari tagihan, bukan dari browser. */
 export function masaAktifBaru(t: Pick<TagihanLangganan, "akhirLama" | "bulan">, tanggalBayar: string): string {
   return perpanjangPeriode(t.akhirLama, tanggalBayar, t.bulan);
+}
+
+/** Tombol bayar baru terbuka H-7 sebelum langganan berbayar berakhir (sama dengan pengingat email pertama). */
+export const HARI_BUKA_BAYAR = 7;
+
+/** Masa percobaan dan semua fase setelah berakhir selalu boleh bayar; langganan aktif hanya dalam 7 hari terakhir. Ganti paket tidak lewat sini. */
+export function bolehBayarSekarang(fase: Fase, sisaHari: number | null): boolean {
+  if (fase !== "aktif") return true;
+  return sisaHari !== null && sisaHari <= HARI_BUKA_BAYAR;
 }

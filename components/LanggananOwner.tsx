@@ -4,6 +4,7 @@ import { useState } from "react";
 import { pecahRupiah, tglPendek } from "@/lib/format";
 import { bolehTerimaPendaftaran, hitungAkses, perpanjangPeriode, type DataLangganan, type Fase } from "@/lib/langganan";
 import { TombolBayarLangganan } from "./TombolBayarLangganan";
+import { bolehBayarSekarang, HARI_BUKA_BAYAR } from "@/lib/bayarLangganan";
 import { PROMO_PELANGGAN, hargaPeriode, labelPlan, type PlanKey } from "@/lib/paketLangganan";
 
 interface Tagihan { id: string; orderId?: string; periode: string; nominal: number; status: "lunas" | "belum_bayar" | "kedaluwarsa" | "batal"; tempo: string }
@@ -52,19 +53,32 @@ export function LanggananOwner({ data, plan, hariIni, tagihan, sekarangMs, prati
           {contohHari.map((c) => <option key={c.tambah} value={c.tambah}>{c.label}</option>)}
         </select></label>}
 
-      <section className="grp">
-        <h2 className="h2">Bayar perpanjangan</h2>
-        <div className="surface kartu-form">
-          <div className="seg" role="radiogroup" aria-label="Periode">
-            {(["bulanan", "tahunan"] as const).map((p) => <button key={p} type="button" role="radio" aria-checked={periode === p} className={periode === p ? "on" : ""} onClick={() => setPeriode(p)}>{p === "bulanan" ? "Bulanan" : "Tahunan · hemat 2 bln"}</button>)}
+      {bolehBayarSekarang(h.fase, h.sisaHari) ? (
+        <section className="grp">
+          <h2 className="h2">Bayar perpanjangan</h2>
+          <div className="surface kartu-form">
+            <div className="seg" role="radiogroup" aria-label="Periode">
+              {(["bulanan", "tahunan"] as const).map((p) => <button key={p} type="button" role="radio" aria-checked={periode === p} className={periode === p ? "on" : ""} onClick={() => setPeriode(p)}>{p === "bulanan" ? "Bulanan" : "Tahunan · hemat 2 bln"}</button>)}
+            </div>
+            <div className="sum"><span className="sub">Paket {labelPlan(plan)} · {bayar.bulan} bulan</span><b>{bayar.promo && <s className="meta" style={{ marginRight: 8, fontWeight: 400 }}>{rp(bayar.normalTotal)}</s>}{rp(bayar.total)}</b></div>
+            <div className="sum"><span className="sub">Aktif sampai</span><span>{tglPendek(berikutnya)} {berikutnya.slice(0, 4)}</span></div>
+            <p className="meta" style={{ margin: 0 }}>Bayar lebih awal tidak menghanguskan sisa hari. Bayar telat dihitung mulai hari pembayaran.</p>
+            {pratinjau ? <button type="button" className="btn" disabled>Bayar lewat DuitKu (pratinjau)</button> : <TombolBayarLangganan periode={periode} />}
+            <Link href="/app/langganan/ganti" className="link" style={{ alignSelf: "center" }}>Ganti paket atau pindah jenis</Link>
           </div>
-          <div className="sum"><span className="sub">Paket {labelPlan(plan)} · {bayar.bulan} bulan</span><b>{bayar.promo && <s className="meta" style={{ marginRight: 8, fontWeight: 400 }}>{rp(bayar.normalTotal)}</s>}{rp(bayar.total)}</b></div>
-          <div className="sum"><span className="sub">Aktif sampai</span><span>{tglPendek(berikutnya)} {berikutnya.slice(0, 4)}</span></div>
-          <p className="meta" style={{ margin: 0 }}>Bayar lebih awal tidak menghanguskan sisa hari. Bayar telat dihitung mulai hari pembayaran.</p>
-          {pratinjau ? <button type="button" className="btn" disabled>Bayar lewat DuitKu (pratinjau)</button> : <TombolBayarLangganan periode={periode} />}
-          <Link href="/app/langganan/ganti" className="link" style={{ alignSelf: "center" }}>Ganti paket atau pindah jenis</Link>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="grp">
+          <h2 className="h2">Perpanjangan</h2>
+          <div className="surface kartu-form">
+            <p className="sub" style={{ margin: 0, fontSize: 13 }}>
+              Langgananmu aktif sampai {h.tenggat ? `${tglPendek(h.tenggat)} ${h.tenggat.slice(0, 4)}` : "-"}. Tombol bayar perpanjangan terbuka {HARI_BUKA_BAYAR} hari sebelum masa aktif berakhir, dan kami kirim pengingat lewat email.
+            </p>
+            <p className="meta" style={{ margin: 0 }}>Mau ganti paket? Bisa kapan saja: perubahan langsung berlaku dan sisa masa aktifmu ikut pindah ke paket baru.</p>
+            <Link href="/app/langganan/ganti" className="btn btn-2">Ganti paket atau pindah jenis</Link>
+          </div>
+        </section>
+      )}
 
       <section className="grp">
         <h2 className="h2">Riwayat tagihan</h2>

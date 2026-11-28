@@ -1,4 +1,5 @@
 "use server";
+import { bolehBayarSekarang, HARI_BUKA_BAYAR } from "@/lib/bayarLangganan";
 import { FORMAT_ORDER_INVOICE, MENIT_KEDALUWARSA, merchantOrderId } from "@/lib/duitku";
 import { ambilMetodeDuitku, buatTransaksiDuitku, konfigDuitku, verifikasiDanAktifkan } from "@/lib/duitkuServer";
 import { asalSitus } from "@/lib/kirimEmail";
@@ -28,6 +29,8 @@ export async function siapkanTagihan(periode: "bulanan" | "tahunan"): Promise<Ha
   const k = await ambilKonteksOwner();
   if (!k) return { ok: false, pesan: "Sesi habis. Masuk lagi." };
   if (!(await bolehLanjut("duitku"))) return { ok: false, pesan: PESAN_TERLALU_SERING };
+  // Dijaga di server juga (bukan hanya tombol disembunyikan): langganan aktif baru bisa diperpanjang H-7.
+  if (!bolehBayarSekarang(k.akses.fase, k.akses.sisaHari)) return { ok: false, pesan: `Perpanjangan dibuka ${HARI_BUKA_BAYAR} hari sebelum masa aktif berakhir.` };
   const h = hargaPeriode(k.plan, periode, Date.now(), PROMO_PELANGGAN);
   const admin = klienAdmin();
   const { data, error } = await admin.rpc("buat_invoice_langganan", { p_tenant: k.tenant.id, p_bulan: h.bulan, p_nominal: h.total });
