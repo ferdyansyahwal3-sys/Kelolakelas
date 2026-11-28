@@ -3,9 +3,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { pecahRupiah, tglPendek } from "@/lib/format";
 import { bolehTerimaPendaftaran, hitungAkses, perpanjangPeriode, type DataLangganan, type Fase } from "@/lib/langganan";
+import { TombolBayarLangganan } from "./TombolBayarLangganan";
 import { PROMO_PELANGGAN, hargaPeriode, labelPlan, type PlanKey } from "@/lib/paketLangganan";
 
-interface Tagihan { id: string; periode: string; nominal: number; status: "lunas" | "belum_bayar" | "kedaluwarsa" | "batal"; tempo: string }
+interface Tagihan { id: string; orderId?: string; periode: string; nominal: number; status: "lunas" | "belum_bayar" | "kedaluwarsa" | "batal"; tempo: string }
 interface Props { data: DataLangganan; plan: PlanKey; hariIni: string; tagihan: Tagihan[]; sekarangMs: number; /** false di panel asli: sembunyikan pilihan "pratinjau status" (hanya untuk contoh). */ pratinjau?: boolean }
 const labelInvoice = { lunas: { t: "Lunas", k: "st st-ok" }, belum_bayar: { t: "Belum bayar", k: "st st-free" }, kedaluwarsa: { t: "Kedaluwarsa", k: "st st-full" }, batal: { t: "Dibatalkan", k: "st st-full" } } as const;
 const rp = (n: number) => `Rp ${pecahRupiah(n).depan}${pecahRupiah(n).belakang}`;
@@ -60,7 +61,7 @@ export function LanggananOwner({ data, plan, hariIni, tagihan, sekarangMs, prati
           <div className="sum"><span className="sub">Paket {labelPlan(plan)} · {bayar.bulan} bulan</span><b>{bayar.promo && <s className="meta" style={{ marginRight: 8, fontWeight: 400 }}>{rp(bayar.normalTotal)}</s>}{rp(bayar.total)}</b></div>
           <div className="sum"><span className="sub">Aktif sampai</span><span>{tglPendek(berikutnya)} {berikutnya.slice(0, 4)}</span></div>
           <p className="meta" style={{ margin: 0 }}>Bayar lebih awal tidak menghanguskan sisa hari. Bayar telat dihitung mulai hari pembayaran.</p>
-          <button type="button" className="btn" disabled>Bayar lewat DuitKu (segera)</button>
+          {pratinjau ? <button type="button" className="btn" disabled>Bayar lewat DuitKu (pratinjau)</button> : <TombolBayarLangganan periode={periode} />}
           <Link href="/app/langganan/ganti" className="link" style={{ alignSelf: "center" }}>Ganti paket atau pindah jenis</Link>
         </div>
       </section>
@@ -72,6 +73,7 @@ export function LanggananOwner({ data, plan, hariIni, tagihan, sekarangMs, prati
           {tagihan.map((t) => (
             <div key={t.id} className="item">
               <div className="grow"><div className="name">{t.periode}</div><div className="meta">{rp(t.nominal)} · tempo {tglPendek(t.tempo)}</div></div>
+              {t.status === "belum_bayar" && t.orderId && !pratinjau && <Link href={`/app/langganan/bayar/${t.orderId}`} className="link" style={{ marginRight: 8 }}>Bayar</Link>}
               <span className={labelInvoice[t.status].k}>{labelInvoice[t.status].t}</span>
             </div>
           ))}

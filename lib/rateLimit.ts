@@ -12,6 +12,8 @@ export const ATURAN = {
   masukAdmin: { maks: 10, detik: 600 },
   lupaSandi: { maks: 5, detik: 3600 },
   buatAkun: { maks: 10, detik: 3600 },
+  duitku: { maks: 30, detik: 600 },
+  duitkuCallback: { maks: 120, detik: 600 },
 } as const;
 export type AksiBatas = keyof typeof ATURAN;
 

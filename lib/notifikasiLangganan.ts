@@ -28,13 +28,13 @@ async function muatInvoice(db: SupabaseClient, invoiceId: string): Promise<Invoi
   return (data as Invoice | null) ?? null;
 }
 
-/** Disiapkan untuk B6 (belum dipanggil siapa pun: invoice belum dibuat di aplikasi). */
+/** Dipanggil saat invoice baru dibuat (B6). Best effort. */
 export async function kirimInvoiceTerbit(db: SupabaseClient, invoiceId: string): Promise<HasilEmail> {
   const inv = await muatInvoice(db, invoiceId);
   if (!inv || inv.status !== "belum_bayar") return { ok: false, status: "dilewati", pesan: "Tagihan tidak ditemukan atau sudah tidak berlaku." };
   const p = await emailPemilik(db, inv.tenant_id);
   if (!p) return TIDAK_ADA;
-  const isi = emailInvoiceLangganan(p.usaha, { plan: inv.plan, bulan: inv.period_months, nominal: inv.amount, tempo: tanggalJakarta(inv.due_at), orderId: inv.order_id, terbit: tanggalJakarta(inv.terbit_pada), email: p.email, promo: inv.promo_code }, `${asalSitus()}/app/langganan/bayar/${inv.id}`);
+  const isi = emailInvoiceLangganan(p.usaha, { plan: inv.plan, bulan: inv.period_months, nominal: inv.amount, tempo: tanggalJakarta(inv.due_at), orderId: inv.order_id, terbit: tanggalJakarta(inv.terbit_pada), email: p.email, promo: inv.promo_code }, `${asalSitus()}/app/langganan/bayar/${inv.order_id}`);
   return kirimEmail({ tenantId: inv.tenant_id, jenis: "langganan_invoice", kunci: kunciInvoiceTerbit(inv.id), ke: p.email, isi });
 }
 

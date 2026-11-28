@@ -6,13 +6,13 @@ import { ambilKonteksOwner } from "@/lib/supabase/konteks";
 import { bacaJalurBayar } from "@/lib/daftarUsaha";
 import { PAKET, PROMO_PELANGGAN, hargaPeriode, labelPlan, rupiah } from "@/lib/paketLangganan";
 import { tglPendek } from "@/lib/format";
+import { TombolBayarLangganan } from "@/components/TombolBayarLangganan";
 
 export const metadata: Metadata = { title: "Pembayaran · KelolaKelas", robots: { index: false } };
 
 /**
  * Tujuan jalur B (/checkout → daftar usaha → sini). Parameter dibaca ulang dan divalidasi: paket harus ada dan sesuai
- * jenis usaha yang baru dibuat. JUJUR soal gateway: DuitKu belum tersambung, jadi halaman ini tidak pernah menampilkan "berhasil"
- * dan tidak menagih apa pun.
+ * jenis usaha yang baru dibuat. Nominal dihitung ulang di server saat tombol ditekan; halaman ini tidak pernah menampilkan "berhasil".
  */
 export default async function BayarPaket({ searchParams }: { searchParams: { paket?: string; periode?: string } }) {
   const k = await ambilKonteksOwner();
@@ -37,13 +37,23 @@ export default async function BayarPaket({ searchParams }: { searchParams: { pak
         <p className="meta" style={{ margin: 0 }}>{def.nama}: {j.periode === "tahunan" ? "dibayar sekali untuk 12 bulan." : "dibayar tiap bulan."}</p>
       </section>
 
-      <section className="surface kartu-form" role="status" aria-label="Status pembayaran">
-        <h2 className="h2">Pembayaran online belum tersedia</h2>
-        <p className="sub" style={{ margin: 0, fontSize: 13 }}>
-          Kami belum bisa memproses pembayaran online. <b>Kamu belum ditagih dan tidak ada dana yang dipotong.</b> Usahamu sudah dibuat
-          {k.akses.tenggat ? ` dan bisa dipakai penuh selama masa percobaan sampai ${tglPendek(k.akses.tenggat)}` : ""}. Paket {labelPlan(j.plan)} bisa dibayar dari halaman Langganan begitu pembayaran dibuka.
-        </p>
-        <button type="button" className="btn" disabled aria-disabled="true">Bayar sekarang · segera tersedia</button>
+      <section className="surface kartu-form" aria-label="Pembayaran">
+        {j.plan !== k.plan ? (
+          <>
+            <h2 className="h2">Paket usahamu {labelPlan(k.plan)}</h2>
+            <p className="sub" style={{ margin: 0, fontSize: 13 }}>Paket yang kamu pilih ({labelPlan(j.plan)}) berbeda dari paket usahamu sekarang. Ganti paketnya dulu, lalu bayar dari halaman Langganan.</p>
+            <Link href="/app/langganan/ganti" className="btn">Ganti paket</Link>
+          </>
+        ) : (
+          <>
+            <h2 className="h2">Lanjut ke pembayaran</h2>
+            <p className="sub" style={{ margin: 0, fontSize: 13 }}>
+              Kamu memilih metode bayar di langkah berikutnya; biaya admin (bila ada) tampil setelah metode dipilih. Langganan aktif otomatis setelah pembayaran terkonfirmasi.
+              {k.akses.tenggat ? ` Masa percobaan berlaku sampai ${tglPendek(k.akses.tenggat)}.` : ""}
+            </p>
+            <TombolBayarLangganan periode={j.periode} label="Pilih metode pembayaran" />
+          </>
+        )}
       </section>
 
       <Link href="/app/langganan/pilih" className="btn btn-2">Ubah paket</Link>
