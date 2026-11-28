@@ -20,7 +20,7 @@ export function KerangkaAuth({ judul, sub, children }: { judul: string; sub?: st
         <div className="auth-kotak">
           <div className="auth-kepala" style={{ "--i": 0 } as React.CSSProperties}>
             <h1 className="auth-h1">{judul}</h1>
-            {sub && <p className="auth-sub">{sub}</p>}
+            {sub && <p className="auth-sub" style={{ marginTop: 8 }}>{sub}</p>}
           </div>
           {children}
         </div>
