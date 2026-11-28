@@ -24,8 +24,9 @@ export async function kirimResetSandi(email: string): Promise<HasilLupa> {
   if (!emailBenar(alamat)) return { ok: false, pesan: "Email belum benar." };
   if (!(await bolehLanjut("lupaSandi"))) return { ok: false, pesan: PESAN_TERLALU_SERING };
   const { error } = await klienServer().auth.resetPasswordForEmail(alamat, { redirectTo: `${asalSitus()}/auth/callback?lanjut=${encodeURIComponent("/atur-sandi")}` });
-  // Batas kirim email dari Supabase disampaikan apa adanya; galat lain disamarkan.
+  // Batas kirim email dari Supabase disampaikan apa adanya; galat lain disamarkan ke pengguna (tidak membocorkan siapa terdaftar) tapi dicatat di log server.
   if (error && (error.code === "over_email_send_rate_limit" || error.status === 429)) return { ok: false, pesan: "Terlalu banyak email terkirim. Coba lagi sebentar lagi." };
+  if (error) console.error("[kirimResetSandi] Supabase menolak permintaan reset sandi:", { status: error.status, code: error.code, pesan: error.message });
   return { ok: true };
 }
 

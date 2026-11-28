@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { bacaEnvPublik } from "./env";
+import { bacaEnvPublik, rapikanUrlSupabase } from "./env";
 
 /** Klien server atas nama pengguna yang login (anon key + cookie). RLS tetap berlaku. */
 export function klienServer() {
@@ -21,7 +21,7 @@ export function klienServer() {
  * simpan bukti bayar dari murid tanpa login). Jangan pernah diimpor dari komponen client, dan jangan diberi awalan NEXT_PUBLIC_.
  */
 export function klienAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = rapikanUrlSupabase(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
   const kunci = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !kunci) throw new Error("SUPABASE_SERVICE_ROLE_KEY belum diisi di .env.local");
   // Tanpa cache: pembacaan lewat klien ini (token portal, slot publik, bukti bayar) tidak boleh basi.
