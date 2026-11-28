@@ -20,7 +20,7 @@ export default async function AturSandi() {
     );
   }
   return (
-    <KerangkaAuth judul="Kata sandi baru" sub={`Buat kata sandi baru untuk ${data.user.email ?? "akunmu"}.`}>
+    <KerangkaAuth judul="Kata sandi baru">
       <FormSandiBaru />
     </KerangkaAuth>
   );
